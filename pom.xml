@@ -4,9 +4,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>user-auth-service</artifactId>
+    <artifactId>recon-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>user-auth-service</name>
+    <name>recon-service</name>
     <description>Spring Boot microservice for payment reconciliation</description>
     <packaging>jar</packaging>
 
@@ -209,7 +209,7 @@
                 <version>${spring.boot.version}</version>
                 <configuration>
                     <image>
-                        <name>user-auth-service:latest</name>
+                        <name>recon-service:latest</name>
                     </image>
                 </configuration>
             </plugin>
