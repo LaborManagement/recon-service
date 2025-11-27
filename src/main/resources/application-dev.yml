@@ -2,10 +2,10 @@
 spring:
   datasource:
     # PostgreSQL connection for reconciliation service with RLS/VPD
-    url: jdbc:postgresql://localhost:5432/labormanagement?currentSchema=reconciliation
+    url: jdbc:postgresql://localhost:5432/lbe?currentSchema=reconciliation
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:app_reconciliation}
-    password: ${DB_PASSWORD:change-me-in-production}
+    password: ${DB_PASSWORD:root}
     # HikariCP connection pooling configuration
     # CRITICAL: These settings ensure transaction-local RLS context persists
     hikari:
