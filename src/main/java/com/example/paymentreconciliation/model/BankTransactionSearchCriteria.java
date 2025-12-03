@@ -10,11 +10,10 @@ public class BankTransactionSearchCriteria {
     private Long bankAccountId;
     private String bankAccountNumber;
     private String txnRef;
-    private Integer statusId;
 
     public boolean hasAnyFilter() {
         return txnDate != null || amount != null || hasText(drCrFlag) || bankAccountId != null
-                || hasText(bankAccountNumber) || hasText(txnRef) || statusId != null;
+                || hasText(bankAccountNumber) || hasText(txnRef);
     }
 
     private boolean hasText(String value) {
@@ -67,13 +66,5 @@ public class BankTransactionSearchCriteria {
 
     public void setTxnRef(String txnRef) {
         this.txnRef = txnRef;
-    }
-
-    public Integer getStatusId() {
-        return statusId;
-    }
-
-    public void setStatusId(Integer statusId) {
-        this.statusId = statusId;
     }
 }

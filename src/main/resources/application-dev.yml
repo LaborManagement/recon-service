@@ -49,9 +49,10 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     issuer: ${APP_JWT_ISSUER:user-auth-service}
-    audience: ${APP_JWT_AUDIENCE:payment-services}
+    audience: ${APP_JWT_AUDIENCE:recon-service}
+    allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
     expiration: ${APP_JWT_EXPIRATION:86400}
-    
+
 # Audit Utility Configuration
 shared-lib:
   audit:
@@ -79,7 +80,7 @@ shared-lib:
       - /swagger-ui.html
     introspection:
       url: http://localhost:8080/internal/auth/introspect
-      api-key: ${INTERNAL_API_KEY:}
+      api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
   filters:
     enabled: true   

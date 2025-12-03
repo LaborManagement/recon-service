@@ -22,11 +22,9 @@ public class BankTransactionSearchService {
     private static final Logger log = LoggerFactoryProvider.getLogger(BankTransactionSearchService.class);
 
     private final BankTransactionSearchDao dao;
-    private final StatusService statusService;
 
-    public BankTransactionSearchService(BankTransactionSearchDao dao, StatusService statusService) {
+    public BankTransactionSearchService(BankTransactionSearchDao dao) {
         this.dao = dao;
-        this.statusService = statusService;
     }
 
     public List<BankTransactionView> search(LocalDate txnDate,
@@ -62,7 +60,6 @@ public class BankTransactionSearchService {
             Long bankAccountId,
             String bankAccountNumber,
             String txnRef,
-            String statusCode,
             Pageable pageable) {
         BankTransactionSearchCriteria criteria = new BankTransactionSearchCriteria();
         criteria.setAmount(amount);
@@ -70,22 +67,12 @@ public class BankTransactionSearchService {
         criteria.setBankAccountId(bankAccountId);
         criteria.setBankAccountNumber(bankAccountNumber);
         criteria.setTxnRef(txnRef);
-        Integer resolvedStatusId = statusCode != null && !statusCode.isBlank()
-                ? statusService.requireStatusId("bank_transaction", statusCode.trim())
-                : null;
-        criteria.setStatusId(resolvedStatusId);
 
         log.info(
-                "Secure paginated search for bank transactions startDate={}, endDate={}, amount={}, drCrFlag={}, bankAccountId={}, bankAccountNumber={}, txnRef={}, statusId={}, page={}, size={}",
-                startDate, endDate, amount, drCrFlag, bankAccountId, bankAccountNumber, txnRef, resolvedStatusId,
+                "Secure paginated search for bank transactions startDate={}, endDate={}, amount={}, drCrFlag={}, bankAccountId={}, bankAccountNumber={}, txnRef={}, page={}, size={}",
+                startDate, endDate, amount, drCrFlag, bankAccountId, bankAccountNumber, txnRef,
                 pageable != null ? pageable.getPageNumber() : null,
                 pageable != null ? pageable.getPageSize() : null);
-        Page<BankTransactionView> result = dao.searchPaginated(criteria, startDate, endDate, pageable);
-        result.forEach(v -> {
-            if (v.getStatusId() != null) {
-                v.setStatus(statusService.resolveStatusCode("bank_transaction", v.getStatusId()));
-            }
-        });
-        return result;
+        return dao.searchPaginated(criteria, startDate, endDate, pageable);
     }
 }

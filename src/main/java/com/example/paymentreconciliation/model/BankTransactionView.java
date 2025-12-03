@@ -16,8 +16,6 @@ public class BankTransactionView {
     private String description;
     private Boolean isMapped;
     private LocalDateTime createdAt;
-    private Integer statusId;
-    private String status;
 
     public String getType() {
         return type;
@@ -105,21 +103,5 @@ public class BankTransactionView {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public Integer getStatusId() {
-        return statusId;
-    }
-
-    public void setStatusId(Integer statusId) {
-        this.statusId = statusId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 }

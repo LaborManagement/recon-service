@@ -70,11 +70,6 @@ public class BankTransactionSearchDao {
             sql.append(" AND bt.txn_ref = :txnRef");
             params.put("txnRef", criteria.getTxnRef().trim());
         }
-        if (criteria.getStatusId() != null) {
-            sql.append(" AND bt.status_id = :statusId");
-            params.put("statusId", criteria.getStatusId());
-        }
-
         sql.append(" ORDER BY bt.txn_date DESC, bt.created_at DESC");
         if (limit != null && limit > 0) {
             sql.append(" LIMIT :limit");
@@ -128,11 +123,6 @@ public class BankTransactionSearchDao {
             sql.append(" AND bt.txn_ref = :txnRef");
             params.put("txnRef", criteria.getTxnRef().trim());
         }
-        if (criteria.getStatusId() != null) {
-            sql.append(" AND bt.status_id = :statusId");
-            params.put("statusId", criteria.getStatusId());
-        }
-
         Sort sort = pageable != null ? pageable.getSort() : Sort.unsorted();
         appendOrderBy(sql, sort, SORT_COLUMN_MAP);
 
@@ -203,8 +193,6 @@ public class BankTransactionSearchDao {
                 view.setCreatedAt(createdAt.toLocalDateTime());
             }
 
-            Integer statusId = rs.getObject("status_id", Integer.class);
-            view.setStatusId(statusId);
             return view;
         }
     }
