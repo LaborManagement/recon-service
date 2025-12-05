@@ -3,3 +3,25 @@ target/
 *.iml
 .idea/
 .DS_Store
+logs/
+*.class
+*.jar
+.vscode/
+uploads/dev/workerpayments/
+API/workerpayments/
+
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+.env
+.env.local
+.env.*.local
+
+# IDE
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
