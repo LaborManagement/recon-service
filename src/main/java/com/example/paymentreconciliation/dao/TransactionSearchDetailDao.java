@@ -23,6 +23,7 @@ public class TransactionSearchDetailDao {
 
     private static final Logger log = LoggerFactoryProvider.getLogger(TransactionSearchDetailDao.class);
     private static final String SUMMARY_SELECT_TEMPLATE = "sql/reconciliation/transaction_search_details_summary.sql";
+    private static final String BASE_SELECT_TEMPLATE = "sql/reconciliation/transaction_search_details_base_select.sql";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final SqlTemplateLoader sqlTemplates;
@@ -72,6 +73,62 @@ public class TransactionSearchDetailDao {
                 new TransactionSearchDetailSummaryRowMapper());
     }
 
+    public List<com.example.paymentreconciliation.model.MatchedTxnView> searchMatchedTxns(
+            TransactionSearchDetailSearchRequest request,
+            TenantAccessDao.TenantAccess tenant,
+            LocalDate startDate,
+            LocalDate endDate) {
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT d.matched_txn_id, d.txn_type\n");
+        sql.append("FROM reconciliation.transaction_search_details d\n");
+        sql.append("WHERE 1=1\n");
+
+        Map<String, Object> params = new HashMap<>();
+
+        sql.append(" AND d.board_id = :boardId");
+        sql.append(" AND d.employer_id = :employerId");
+        sql.append(" AND COALESCE(d.toli_id, 0) = COALESCE(:toliId, 0)");
+        params.put("boardId", tenant.boardId);
+        params.put("employerId", tenant.employerId);
+        params.put("toliId", tenant.toliId);
+
+        sql.append(" AND d.txn_date BETWEEN :startDate AND :endDate");
+        params.put("startDate", startDate);
+        params.put("endDate", endDate);
+
+        if (hasText(request.getRequestNmbr())) {
+            sql.append(" AND d.request_nmbr = :requestNmbr");
+            params.put("requestNmbr", request.getRequestNmbr().trim());
+        }
+        // Only include matched transactions that are in FOUND status
+        sql.append(" AND UPPER(d.status) = 'FOUND'");
+        if (request.getUploadId() != null) {
+            sql.append(" AND d.upload_id = :uploadId");
+            params.put("uploadId", request.getUploadId());
+        }
+        if (hasText(request.getTxnRef())) {
+            sql.append(" AND d.txn_ref = :txnRef");
+            params.put("txnRef", request.getTxnRef().trim());
+        }
+
+        sql.append(" AND d.matched_txn_id IS NOT NULL");
+        sql.append(" ORDER BY d.created_at DESC, d.id DESC");
+
+        log.debug("Executing matched_txn transaction_search_details SQL: {} with params {}", sql, params);
+        return jdbcTemplate.query(
+                sql.toString(),
+                params,
+                (rs, rowNum) -> {
+                    com.example.paymentreconciliation.model.MatchedTxnView view = new com.example.paymentreconciliation.model.MatchedTxnView();
+                    view.setMatchedTxnId(rs.getLong("matched_txn_id"));
+                    if (rs.wasNull()) {
+                        view.setMatchedTxnId(null);
+                    }
+                    view.setTxnType(rs.getString("txn_type"));
+                    return view;
+                });
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }
@@ -87,4 +144,5 @@ public class TransactionSearchDetailDao {
             return view;
         }
     }
+
 }

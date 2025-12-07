@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.paymentreconciliation.model.TransactionSearchDetailSearchRequest;
-import com.example.paymentreconciliation.model.TransactionSearchDetailView;
+import com.example.paymentreconciliation.model.TransactionSearchDetailSearchResponse;
 import com.example.paymentreconciliation.service.TransactionSearchDetailService;
 import com.shared.common.annotation.SecurePagination;
 import com.shared.common.util.SecurePaginationUtil;
@@ -45,7 +45,7 @@ public class TransactionSearchDetailController {
                 return ResponseEntity.badRequest().body(SecurePaginationUtil.createErrorResponse(validation));
             }
 
-            java.util.List<TransactionSearchDetailView> result = searchService.search(request, validation);
+            TransactionSearchDetailSearchResponse result = searchService.search(request, validation);
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));

@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.paymentreconciliation.dao.TransactionSearchDetailDao;
 import com.example.paymentreconciliation.model.TransactionSearchDetailSearchRequest;
+import com.example.paymentreconciliation.model.TransactionSearchDetailSearchResponse;
 import com.example.paymentreconciliation.model.TransactionSearchDetailView;
 import com.shared.common.dao.TenantAccessDao;
 import com.shared.common.util.SecurePaginationUtil;
@@ -24,7 +25,7 @@ public class TransactionSearchDetailService {
         this.tenantAccessDao = tenantAccessDao;
     }
 
-    public java.util.List<TransactionSearchDetailView> search(
+    public TransactionSearchDetailSearchResponse search(
             TransactionSearchDetailSearchRequest request,
             SecurePaginationUtil.ValidationResult validation) {
         if (request == null) {
@@ -40,17 +41,29 @@ public class TransactionSearchDetailService {
         }
 
         log.info(
-                "Searching transaction_search_details summary startDate={}, endDate={}, requestNmbr={}, status={}, uploadId={}",
+                "Searching transaction_search_details startDate={}, endDate={}, requestNmbr={}, status={}, uploadId={}, txnRef={}",
                 validation.getStartDateTime(),
                 validation.getEndDateTime(),
                 request.getRequestNmbr(),
                 request.getStatus(),
-                request.getUploadId());
+                request.getUploadId(),
+                request.getTxnRef());
 
-        return dao.searchSummary(
+        java.util.List<TransactionSearchDetailView> summary = dao.searchSummary(
                 request,
                 ta,
                 validation.getStartDateTime().toLocalDate(),
                 validation.getEndDateTime().toLocalDate());
+
+        java.util.List<com.example.paymentreconciliation.model.MatchedTxnView> matchedTxns = dao.searchMatchedTxns(
+                request,
+                ta,
+                validation.getStartDateTime().toLocalDate(),
+                validation.getEndDateTime().toLocalDate());
+
+        TransactionSearchDetailSearchResponse response = new TransactionSearchDetailSearchResponse();
+        response.setSummary(summary);
+        response.setMatchedTxns(matchedTxns);
+        return response;
     }
 }
