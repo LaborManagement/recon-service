@@ -1,4 +1,4 @@
 txn_ref,txn_date,txn_amount,txn_type,board_bank,employer_bank
-TRF,2025-10-14,200.00,CR,BOARD-BANK-A,EMP-BANK-A
+TRF,2025-10-14,200.00,UPI,BOARD-BANK-A,EMP-BANK-A
 
 

@@ -67,6 +67,9 @@ public class TransactionSearchDetail {
     @Column(name = "matched_txn_id")
     private Long matchedTxnId;
 
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "claim_id")
     private String claimId;
 
@@ -188,6 +191,14 @@ public class TransactionSearchDetail {
 
     public void setMatchedTxnId(Long matchedTxnId) {
         this.matchedTxnId = matchedTxnId;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getClaimId() {

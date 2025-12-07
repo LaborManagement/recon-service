@@ -143,6 +143,7 @@ public class TransactionUploadService {
         detail.setToliId(defaultToliId);
         detail.setBoardBank(coalesce(record, "board_bank", null));
         detail.setEmployerBank(coalesce(record, "employer_bank", null));
+        detail.setDescription(coalesce(record, "description", null));
         detail.setTxnType(coalesce(record, "txn_type", null));
         detail.setTxnRef(required(record, "txn_ref", lineNo));
         detail.setCreatedAt(LocalDateTime.now());

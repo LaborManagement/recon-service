@@ -1,16 +1,18 @@
 package com.example.paymentreconciliation.service;
 
-import com.example.paymentreconciliation.dto.TransactionMatchResponse;
-import com.shared.common.dao.TenantAccessDao;
-import com.shared.utilities.logger.LoggerFactoryProvider;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.example.paymentreconciliation.dto.TransactionMatchResponse;
+import com.shared.common.dao.TenantAccessDao;
+import com.shared.utilities.logger.LoggerFactoryProvider;
 
 @Service
 public class TransactionMatchService {
@@ -49,6 +51,8 @@ public class TransactionMatchService {
                 WITH candidates AS (
                     SELECT d.id AS detail_id,
                            b.source_txn_id,
+                           b.type AS txn_type,
+                           b.description,
                            ROW_NUMBER() OVER (PARTITION BY d.id ORDER BY b.txn_date DESC, b.created_at DESC) AS rn
                       FROM reconciliation.transaction_search_details d
                       JOIN reconciliation.vw_all_bank_transactions b
@@ -64,6 +68,8 @@ public class TransactionMatchService {
                 UPDATE reconciliation.transaction_search_details d
                    SET status = 'FOUND',
                        matched_txn_id = c.source_txn_id,
+                       txn_type = c.txn_type,
+                       description = c.description,
                        checked_at = NOW(),
                        error = NULL
                   FROM candidates c
