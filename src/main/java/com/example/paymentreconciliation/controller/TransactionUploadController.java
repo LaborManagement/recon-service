@@ -38,12 +38,15 @@ public class TransactionUploadController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload transaction CSV", description = "Accepts CSV with columns: txn_ref, txn_date, txn_amount, txn_type, board_bank, employer_bank. Tenant board/employer/toli are derived from access context (not from CSV).")
+    @Operation(summary = "Upload transaction CSV", description = "Accepts CSV with columns: txn_ref, request_nmbr (optional, must match employer_receipt_number), txn_date, txn_amount, txn_type (optional, defaults to UPI). Tenant board/employer/toli are derived from access context (not from CSV).")
     public ResponseEntity<?> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String uploadedBy) {
         try {
             TransactionUploadResponse uploadResponse = uploadService.upload(file, uploadedBy);
+            if (!"LOADED".equalsIgnoreCase(uploadResponse.getStatus())) {
+                return ResponseEntity.badRequest().body(uploadResponse);
+            }
             TransactionMatchResponse matchResponse = matchService.matchUpload(uploadResponse.getUploadId());
             uploadResponse.setMatchedRows(matchResponse.getMatched());
             uploadResponse.setNotFoundRows(matchResponse.getMarkedNotFound());

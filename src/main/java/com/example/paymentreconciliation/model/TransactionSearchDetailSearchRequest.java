@@ -5,6 +5,7 @@ import com.shared.common.dto.SecurePaginationRequest;
 public class TransactionSearchDetailSearchRequest extends SecurePaginationRequest {
 
     private String txnRef;
+    private String requestNmbr;
     private Long uploadId;
 
     public TransactionSearchDetailSearchRequest() {
@@ -19,6 +20,14 @@ public class TransactionSearchDetailSearchRequest extends SecurePaginationReques
 
     public void setTxnRef(String txnRef) {
         this.txnRef = txnRef;
+    }
+
+    public String getRequestNmbr() {
+        return requestNmbr;
+    }
+
+    public void setRequestNmbr(String requestNmbr) {
+        this.requestNmbr = requestNmbr;
     }
 
     public Long getUploadId() {

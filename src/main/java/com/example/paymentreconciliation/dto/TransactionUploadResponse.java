@@ -10,6 +10,7 @@ public class TransactionUploadResponse {
     private Integer failedRows;
     private Integer matchedRows;
     private Integer notFoundRows;
+    private String errorMessage;
 
     public TransactionUploadResponse(Long uploadId, String status, String filename, String fileHash,
             Integer totalRows, Integer successfulRows, Integer failedRows) {
@@ -100,5 +101,13 @@ public class TransactionUploadResponse {
 
     public void setNotFoundRows(Integer notFoundRows) {
         this.notFoundRows = notFoundRows;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }

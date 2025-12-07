@@ -176,6 +176,7 @@ public class BankTransactionSearchDao {
             }
             view.setBankAccountNumber(rs.getString("bank_account_number"));
             view.setTxnRef(rs.getString("txn_ref"));
+            view.setInternalRef(rs.getString("internal_ref"));
 
             java.sql.Date txnDate = rs.getDate("txn_date");
             if (txnDate != null) {

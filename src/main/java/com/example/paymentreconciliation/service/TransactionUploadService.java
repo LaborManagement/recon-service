@@ -22,6 +22,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,13 +44,16 @@ public class TransactionUploadService {
     private final TransactionUploadRepository uploadRepository;
     private final TransactionSearchDetailRepository detailRepository;
     private final TenantAccessDao tenantAccessDao;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public TransactionUploadService(TransactionUploadRepository uploadRepository,
             TransactionSearchDetailRepository detailRepository,
-            TenantAccessDao tenantAccessDao) {
+            TenantAccessDao tenantAccessDao,
+            NamedParameterJdbcTemplate jdbcTemplate) {
         this.uploadRepository = uploadRepository;
         this.detailRepository = detailRepository;
         this.tenantAccessDao = tenantAccessDao;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional
@@ -81,6 +85,8 @@ public class TransactionUploadService {
         upload = uploadRepository.save(upload);
 
         int failedRows = 0;
+        int invalidRequestRows = 0;
+        boolean rejectUpload = false;
         List<TransactionSearchDetail> details = new ArrayList<>();
         try (Reader reader = new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8);
                 CSVParser parser = CSVFormat.DEFAULT
@@ -96,6 +102,14 @@ public class TransactionUploadService {
 
             for (CSVRecord record : parser) {
                 TransactionSearchDetail detail = toDetail(record, upload, boardId, employerId, toliId);
+                if (detail.getStatus() != TransactionSearchDetail.Status.FAILED
+                        && hasText(detail.getRequestNmbr())
+                        && !requestNumberExists(detail.getRequestNmbr(), boardId, employerId)) {
+                    detail.setStatus(TransactionSearchDetail.Status.FAILED);
+                    detail.setError("Invalid request_nmbr '" + detail.getRequestNmbr() + "'; employer receipt not found");
+                    invalidRequestRows++;
+                    rejectUpload = true;
+                }
                 if (detail.getStatus() == TransactionSearchDetail.Status.FAILED) {
                     failedRows++;
                 }
@@ -115,20 +129,38 @@ public class TransactionUploadService {
             throw new IllegalArgumentException("No records found in CSV");
         }
 
+        if (rejectUpload) {
+            for (TransactionSearchDetail detail : details) {
+                if (detail.getStatus() != TransactionSearchDetail.Status.FAILED) {
+                    detail.setStatus(TransactionSearchDetail.Status.FAILED);
+                    detail.setError("Upload rejected because request_nmbr not found");
+                }
+            }
+            failedRows = details.size();
+        }
+
         detailRepository.saveAll(details);
         upload.setTotalRows(details.size());
-        upload.setStatus(TransactionUpload.Status.LOADED);
-        upload.setErrorMessage(failedRows > 0 ? "Some rows failed validation" : null);
+        if (rejectUpload) {
+            upload.setStatus(TransactionUpload.Status.FAILED);
+            upload.setErrorMessage("Invalid request_nmbr found; upload rejected");
+        } else {
+            upload.setStatus(TransactionUpload.Status.LOADED);
+            upload.setErrorMessage(failedRows > 0 ? "Some rows failed validation" : null);
+        }
         uploadRepository.save(upload);
 
-        return new TransactionUploadResponse(
+        int successfulRows = rejectUpload ? 0 : details.size() - failedRows;
+        TransactionUploadResponse response = new TransactionUploadResponse(
                 upload.getId(),
                 upload.getStatus().name(),
                 upload.getFilename(),
                 upload.getFileHash(),
                 upload.getTotalRows(),
-                details.size() - failedRows,
+                successfulRows,
                 failedRows);
+        response.setErrorMessage(upload.getErrorMessage());
+        return response;
     }
 
     private TransactionSearchDetail toDetail(CSVRecord record, TransactionUpload upload, Long defaultBoardId,
@@ -141,11 +173,10 @@ public class TransactionUploadService {
         detail.setBoardId(defaultBoardId);
         detail.setEmployerId(defaultEmployerId);
         detail.setToliId(defaultToliId);
-        detail.setBoardBank(coalesce(record, "board_bank", null));
-        detail.setEmployerBank(coalesce(record, "employer_bank", null));
         detail.setDescription(coalesce(record, "description", null));
-        detail.setTxnType(coalesce(record, "txn_type", null));
+        detail.setTxnType(coalesce(record, "txn_type", "UPI"));
         detail.setTxnRef(required(record, "txn_ref", lineNo));
+        detail.setRequestNmbr(coalesce(record, "request_nmbr", null));
         detail.setCreatedAt(LocalDateTime.now());
 
         try {
@@ -235,6 +266,30 @@ public class TransactionUploadService {
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException("Invalid txn_amount: " + value);
         }
+    }
+
+    private boolean requestNumberExists(String requestNmbr, Long boardId, Long employerId) {
+        if (!hasText(requestNmbr) || boardId == null || employerId == null) {
+            return false;
+        }
+        String sql = """
+                SELECT EXISTS(
+                    SELECT 1
+                      FROM payment_flow.employer_payment_receipts
+                     WHERE employer_receipt_number = :requestNmbr
+                       AND board_id = :boardId
+                       AND employer_id = :employerId)
+                """;
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("requestNmbr", requestNmbr.trim());
+        params.put("boardId", boardId);
+        params.put("employerId", employerId);
+        Boolean exists = jdbcTemplate.queryForObject(sql, params, Boolean.class);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private TenantAccessDao.TenantAccess requireTenantAccess() {

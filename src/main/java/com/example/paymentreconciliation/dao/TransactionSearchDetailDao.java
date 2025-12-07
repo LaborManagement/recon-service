@@ -1,19 +1,13 @@
 package com.example.paymentreconciliation.dao;
 
-import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -28,12 +22,7 @@ import com.shared.utilities.logger.LoggerFactoryProvider;
 public class TransactionSearchDetailDao {
 
     private static final Logger log = LoggerFactoryProvider.getLogger(TransactionSearchDetailDao.class);
-    private static final String BASE_SELECT_TEMPLATE = "sql/reconciliation/transaction_search_details_base_select.sql";
-    private static final Map<String, String> SORT_COLUMN_MAP = Map.of(
-            "receiptDate", "d.txn_date",
-            "createdAt", "d.created_at",
-            "amount", "d.txn_amount",
-            "id", "d.id");
+    private static final String SUMMARY_SELECT_TEMPLATE = "sql/reconciliation/transaction_search_details_summary.sql";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final SqlTemplateLoader sqlTemplates;
@@ -43,9 +32,9 @@ public class TransactionSearchDetailDao {
         this.sqlTemplates = sqlTemplates;
     }
 
-    public Page<TransactionSearchDetailView> searchPaginated(TransactionSearchDetailSearchRequest request,
-            TenantAccessDao.TenantAccess tenant, Pageable pageable, LocalDate startDate, LocalDate endDate) {
-        String baseSql = sqlTemplates.load(BASE_SELECT_TEMPLATE);
+    public List<TransactionSearchDetailView> searchSummary(TransactionSearchDetailSearchRequest request,
+            TenantAccessDao.TenantAccess tenant, LocalDate startDate, LocalDate endDate) {
+        String baseSql = sqlTemplates.load(SUMMARY_SELECT_TEMPLATE);
         StringBuilder sql = new StringBuilder(baseSql);
         Map<String, Object> params = new HashMap<>();
 
@@ -60,9 +49,9 @@ public class TransactionSearchDetailDao {
         params.put("startDate", startDate);
         params.put("endDate", endDate);
 
-        if (hasText(request.getTxnRef())) {
-            sql.append(" AND d.txn_ref = :txnRef");
-            params.put("txnRef", request.getTxnRef().trim());
+        if (hasText(request.getRequestNmbr())) {
+            sql.append(" AND d.request_nmbr = :requestNmbr");
+            params.put("requestNmbr", request.getRequestNmbr().trim());
         }
         if (hasText(request.getStatus())) {
             sql.append(" AND UPPER(d.status) = :status");
@@ -73,84 +62,28 @@ public class TransactionSearchDetailDao {
             params.put("uploadId", request.getUploadId());
         }
 
-        String filteredSql = sql.toString();
-        String countSql = "SELECT COUNT(*) FROM (" + filteredSql + ") AS count_base";
+        sql.append(" GROUP BY d.request_nmbr, d.status");
+        sql.append(" ORDER BY d.request_nmbr NULLS FIRST, d.status");
 
-        Sort sort = pageable != null ? pageable.getSort() : Sort.unsorted();
-        appendOrderBy(sql, sort, SORT_COLUMN_MAP);
-
-        if (pageable != null) {
-            sql.append(" LIMIT :limit OFFSET :offset");
-            params.put("limit", pageable.getPageSize());
-            params.put("offset", (long) pageable.getPageNumber() * pageable.getPageSize());
-        }
-
-        log.debug("Executing paginated transaction_search_details SQL: {} with params {}", sql, params);
-        List<TransactionSearchDetailView> results = jdbcTemplate.query(
+        log.debug("Executing summary transaction_search_details SQL: {} with params {}", sql, params);
+        return jdbcTemplate.query(
                 sql.toString(),
                 params,
-                new TransactionSearchDetailRowMapper());
-        long total = jdbcTemplate.queryForObject(countSql, params, Long.class);
-        return new PageImpl<>(results, pageable, total);
+                new TransactionSearchDetailSummaryRowMapper());
     }
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }
 
-    private void appendOrderBy(StringBuilder sql, Sort sort, Map<String, String> sortColumnMap) {
-        if (sort == null || sort.isUnsorted()) {
-            sql.append(" ORDER BY d.txn_date DESC, d.created_at DESC, d.id DESC");
-            return;
-        }
-        sql.append(" ORDER BY ");
-        boolean first = true;
-        for (Sort.Order order : sort) {
-            if (!first) {
-                sql.append(", ");
-            }
-            String column = sortColumnMap.getOrDefault(order.getProperty(), "d.created_at");
-            sql.append(column).append(order.isAscending() ? " ASC" : " DESC");
-            first = false;
-        }
-    }
-
-    private static class TransactionSearchDetailRowMapper implements RowMapper<TransactionSearchDetailView> {
+    private static class TransactionSearchDetailSummaryRowMapper implements RowMapper<TransactionSearchDetailView> {
         @Override
         public TransactionSearchDetailView mapRow(ResultSet rs, int rowNum) throws SQLException {
             TransactionSearchDetailView view = new TransactionSearchDetailView();
-            view.setType(rs.getString("txn_type"));
-
-            Long matchedId = rs.getObject("matched_txn_id", Long.class);
-            view.setSourceTxnId(matchedId != null ? matchedId.toString() : null);
-            view.setBankAccountId(0);
-            view.setBankAccountNumber(rs.getString("board_bank"));
-            view.setTxnRef(rs.getString("txn_ref"));
-
-            Date txnDate = rs.getDate("txn_date");
-            if (txnDate != null) {
-                view.setTxnDate(txnDate.toLocalDate());
-            }
-
-            view.setAmount(rs.getBigDecimal("txn_amount"));
-            view.setDrCrFlag("C");
-            String desc = rs.getString("description");
-            if (desc == null || desc.isBlank()) {
-                desc = rs.getString("employer_bank");
-            }
-            if (desc == null || desc.isBlank()) {
-                desc = rs.getString("txn_type");
-            }
-            view.setDescription(desc);
+            view.setRequestNmbr(rs.getString("request_nmbr"));
+            view.setTotalTransactions(rs.getLong("total_transactions"));
+            view.setTotalAmount(rs.getBigDecimal("total_amount"));
             view.setStatus(rs.getString("status"));
-
-            view.setIsMapped(matchedId != null);
-
-            Timestamp createdAt = rs.getTimestamp("created_at");
-            if (createdAt != null) {
-                view.setCreatedAt(createdAt.toLocalDateTime());
-            }
-
             return view;
         }
     }

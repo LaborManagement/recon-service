@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.paymentreconciliation.model.TransactionSearchDetailSearchRequest;
+import com.example.paymentreconciliation.model.TransactionSearchDetailView;
 import com.example.paymentreconciliation.service.TransactionSearchDetailService;
 import com.shared.common.annotation.SecurePagination;
-import com.shared.common.dto.SecurePaginationResponse;
 import com.shared.common.util.SecurePaginationUtil;
 import com.shared.utilities.logger.LoggerFactoryProvider;
 
@@ -21,12 +21,11 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/reconciliation/transaction-search-details")
-@Tag(name = "Transaction Search Details", description = "Secure paginated search over uploaded transaction_search_details")
+@Tag(name = "Transaction Search Details", description = "Summary aggregation over uploaded transaction_search_details")
 @SecurityRequirement(name = "Bearer Authentication")
 public class TransactionSearchDetailController {
 
     private static final Logger log = LoggerFactoryProvider.getLogger(TransactionSearchDetailController.class);
-    private static final int MAX_PAGE_SIZE = 100;
 
     private final TransactionSearchDetailService searchService;
 
@@ -36,18 +35,17 @@ public class TransactionSearchDetailController {
 
     @PostMapping("/search")
     @SecurePagination
-    @Operation(summary = "Paginated search of transaction_search_details", description = "Requires startDate and endDate; filters optional (txnType, txnRef, status, uploadId, mapped); results include normalized fields for UI consumption.")
+    @Operation(summary = "Summary search of transaction_search_details", description = "Requires startDate and endDate; filters optional (requestNmbr, status, uploadId); results aggregated by request_nmbr and status.")
     public ResponseEntity<?> search(
             @Valid @RequestBody TransactionSearchDetailSearchRequest request) {
         try {
 
-            SecurePaginationUtil.applyPageToken(request);
             SecurePaginationUtil.ValidationResult validation = SecurePaginationUtil.validatePaginationRequest(request);
             if (!validation.isValid()) {
                 return ResponseEntity.badRequest().body(SecurePaginationUtil.createErrorResponse(validation));
             }
 
-            SecurePaginationResponse<?> result = searchService.search(request, validation);
+            java.util.List<TransactionSearchDetailView> result = searchService.search(request, validation);
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));

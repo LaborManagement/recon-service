@@ -53,13 +53,16 @@ public class TransactionSearchDetail {
     private String employerBank;
 
     @Column(name = "txn_type")
-    private String txnType;
+    private String txnType = "UPI";
 
     @Column(name = "txn_date")
     private LocalDate txnDate;
 
     @Column(name = "txn_ref")
     private String txnRef;
+
+    @Column(name = "request_nmbr", length = 40)
+    private String requestNmbr;
 
     @Column(name = "txn_amount")
     private BigDecimal txnAmount;
@@ -158,7 +161,11 @@ public class TransactionSearchDetail {
     }
 
     public void setTxnType(String txnType) {
-        this.txnType = txnType;
+        if (txnType == null || txnType.isBlank()) {
+            this.txnType = "UPI";
+        } else {
+            this.txnType = txnType;
+        }
     }
 
     public LocalDate getTxnDate() {
@@ -175,6 +182,14 @@ public class TransactionSearchDetail {
 
     public void setTxnRef(String txnRef) {
         this.txnRef = txnRef;
+    }
+
+    public String getRequestNmbr() {
+        return requestNmbr;
+    }
+
+    public void setRequestNmbr(String requestNmbr) {
+        this.requestNmbr = requestNmbr;
     }
 
     public BigDecimal getTxnAmount() {
