@@ -130,6 +130,121 @@ public class TransactionSearchDetailDao {
                 });
     }
 
+    /**
+     * Fetch individual transaction search detail records for CSV download.
+     * Returns records with request_nmbr, txn_date, txn_ref, txn_amount, status.
+     */
+    public List<com.example.paymentreconciliation.model.TransactionSearchDetailDownloadDto> fetchForDownload(
+            TransactionSearchDetailSearchRequest request,
+            TenantAccessDao.TenantAccess tenant,
+            LocalDate startDate,
+            LocalDate endDate) {
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT d.request_nmbr, d.txn_date, d.txn_ref, d.txn_amount, d.status::text\n");
+        sql.append("FROM reconciliation.transaction_search_details d\n");
+        sql.append("WHERE 1=1\n");
+
+        Map<String, Object> params = new HashMap<>();
+
+        // Tenant filters
+        sql.append(" AND d.board_id = :boardId");
+        sql.append(" AND d.employer_id = :employerId");
+        sql.append(" AND COALESCE(d.toli_id, 0) = COALESCE(:toliId, 0)");
+        params.put("boardId", tenant.boardId);
+        params.put("employerId", tenant.employerId);
+        params.put("toliId", tenant.toliId);
+
+        // Date range filter
+        sql.append(" AND d.created_at::date BETWEEN :startDate AND :endDate");
+        params.put("startDate", startDate);
+        params.put("endDate", endDate);
+
+        // Optional filters
+        if (hasText(request.getRequestNmbr())) {
+            sql.append(" AND d.request_nmbr = :requestNmbr");
+            params.put("requestNmbr", request.getRequestNmbr().trim());
+        }
+        if (hasText(request.getStatus())) {
+            sql.append(" AND UPPER(d.status::text) = :status");
+            params.put("status", request.getStatus().trim().toUpperCase());
+        }
+        if (request.getUploadId() != null) {
+            sql.append(" AND d.upload_id = :uploadId");
+            params.put("uploadId", request.getUploadId());
+        }
+        if (hasText(request.getTxnRef())) {
+            sql.append(" AND d.txn_ref = :txnRef");
+            params.put("txnRef", request.getTxnRef().trim());
+        }
+
+        sql.append(" ORDER BY d.created_at DESC, d.id DESC");
+
+        log.debug("Executing download transaction_search_details SQL: {} with params {}", sql, params);
+        return jdbcTemplate.query(
+                sql.toString(),
+                params,
+                (rs, rowNum) -> {
+                    com.example.paymentreconciliation.model.TransactionSearchDetailDownloadDto dto = new com.example.paymentreconciliation.model.TransactionSearchDetailDownloadDto();
+                    dto.setRequestNmbr(rs.getString("request_nmbr"));
+
+                    java.sql.Date sqlDate = rs.getDate("txn_date");
+                    if (sqlDate != null) {
+                        dto.setTxnDate(sqlDate.toLocalDate());
+                    }
+
+                    dto.setTxnRef(rs.getString("txn_ref"));
+                    dto.setTxnAmount(rs.getBigDecimal("txn_amount"));
+                    dto.setStatus(rs.getString("status"));
+                    return dto;
+                });
+    }
+
+    /**
+     * Fetch transaction search detail records for CSV download filtered by
+     * request_nmbr and status.
+     * 
+     * @param requestNmbr The request number to filter by
+     * @param status      The status to filter by
+     * @param tenant      Tenant access information
+     * @return List of download DTOs
+     */
+    public List<com.example.paymentreconciliation.model.TransactionSearchDetailDownloadDto> fetchForDownload(
+            String requestNmbr,
+            String status,
+            TenantAccessDao.TenantAccess tenant) {
+
+        log.info("Fetching transaction search details for download: requestNmbr={}, status={}", requestNmbr, status);
+
+        String sql = """
+                SELECT request_nmbr,
+                       txn_date,
+                       txn_ref,
+                       txn_amount,
+                       status
+                FROM reconciliation.transaction_search_details
+                WHERE board_id = :boardId
+                  AND employer_id = :employerId
+                  AND request_nmbr = :requestNmbr
+                  AND status = :status
+                ORDER BY txn_date, id
+                """;
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("boardId", tenant.boardId);
+        params.put("employerId", tenant.employerId);
+        params.put("requestNmbr", requestNmbr);
+        params.put("status", status);
+
+        return jdbcTemplate.query(sql, params, (rs, rowNum) -> {
+            return new com.example.paymentreconciliation.model.TransactionSearchDetailDownloadDto(
+                    rs.getString("request_nmbr"),
+                    rs.getDate("txn_date") != null ? rs.getDate("txn_date").toLocalDate() : null,
+                    rs.getString("txn_ref"),
+                    rs.getBigDecimal("txn_amount"),
+                    rs.getString("status"));
+        });
+    }
+
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }

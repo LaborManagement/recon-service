@@ -66,4 +66,32 @@ public class TransactionSearchDetailService {
         response.setMatchedTxns(matchedTxns);
         return response;
     }
+
+    /**
+     * Fetch transaction search details for CSV download.
+     * 
+     * @param requestNmbr Request number to filter by
+     * @param status      Status to filter by
+     * @return List of transaction search detail download DTOs
+     */
+    public java.util.List<com.example.paymentreconciliation.model.TransactionSearchDetailDownloadDto> fetchForDownload(
+            String requestNmbr,
+            String status) {
+
+        if (requestNmbr == null || requestNmbr.trim().isEmpty()) {
+            throw new IllegalArgumentException("Request number is required");
+        }
+        if (status == null || status.trim().isEmpty()) {
+            throw new IllegalArgumentException("Status is required");
+        }
+
+        TenantAccessDao.TenantAccess ta = tenantAccessDao.getFirstAccessibleTenant();
+        if (ta == null || ta.boardId == null || ta.employerId == null) {
+            throw new IllegalStateException("User has no tenant access for download");
+        }
+
+        log.info("Fetching transaction search details for download: requestNmbr={}, status={}", requestNmbr, status);
+
+        return dao.fetchForDownload(requestNmbr, status, ta);
+    }
 }
