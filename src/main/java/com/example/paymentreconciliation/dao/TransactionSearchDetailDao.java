@@ -46,7 +46,7 @@ public class TransactionSearchDetailDao {
         params.put("employerId", tenant.employerId);
         params.put("toliId", tenant.toliId);
 
-        sql.append(" AND d.txn_date BETWEEN :startDate AND :endDate");
+        sql.append(" AND d.created_at::date BETWEEN :startDate AND :endDate");
         params.put("startDate", startDate);
         params.put("endDate", endDate);
 
@@ -79,7 +79,7 @@ public class TransactionSearchDetailDao {
             LocalDate startDate,
             LocalDate endDate) {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT d.matched_txn_id, d.txn_type\n");
+        sql.append("SELECT d.matched_txn_id, d.txn_type, d.request_nmbr\n");
         sql.append("FROM reconciliation.transaction_search_details d\n");
         sql.append("WHERE 1=1\n");
 
@@ -92,7 +92,7 @@ public class TransactionSearchDetailDao {
         params.put("employerId", tenant.employerId);
         params.put("toliId", tenant.toliId);
 
-        sql.append(" AND d.txn_date BETWEEN :startDate AND :endDate");
+        sql.append(" AND d.created_at::date BETWEEN :startDate AND :endDate");
         params.put("startDate", startDate);
         params.put("endDate", endDate);
 
@@ -125,6 +125,7 @@ public class TransactionSearchDetailDao {
                         view.setMatchedTxnId(null);
                     }
                     view.setTxnType(rs.getString("txn_type"));
+                    view.setRequestNmbr(rs.getString("request_nmbr"));
                     return view;
                 });
     }
