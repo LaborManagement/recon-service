@@ -1,0 +1,32 @@
+{"properties": [
+  {
+    "name": "spring.cors.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.cors.enabled'"
+  },
+  {
+    "name": "spring.cors.max-age",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.cors.max-age'"
+  },
+  {
+    "name": "spring.cors.allowed-origins",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.cors.allowed-origins'"
+  },
+  {
+    "name": "spring.cors.allowed-methods",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.cors.allowed-methods'"
+  },
+  {
+    "name": "spring.cors.allowed-headers",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.cors.allowed-headers'"
+  },
+  {
+    "name": "spring.cors.allow-credentials",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.cors.allow-credentials'"
+  }
+]}
