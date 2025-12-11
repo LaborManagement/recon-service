@@ -25,3 +25,4 @@ docker-compose*.yml
 
 # OS
 Thumbs.db
+src/main/resources/application-prod.yml
