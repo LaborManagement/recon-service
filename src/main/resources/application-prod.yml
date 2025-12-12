@@ -60,6 +60,10 @@ logging:
     max-size: 100MB
     max-history: 7
 
+springdoc:
+  paths-to-exclude:
+    - /error
+
 # Azure Container Apps ephemeral storage configuration
 file:
   upload:
