@@ -2,7 +2,8 @@
 spring:
   datasource:
     # PostgreSQL connection for reconciliation service with RLS/VPD
-    url: jdbc:postgresql://localhost:5432/lbe?currentSchema=reconciliation
+    #url: jdbc:postgresql://localhost:5432/lbe?currentSchema=reconciliation
+    url: ${DB_URL:jdbc:postgresql://lbe-dbinstance.cd0sc0k82p15.ap-south-1.rds.amazonaws.com:5432/lbe?sslmode=require&currentSchema=reconciliation}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:app_reconciliation}
     password: ${DB_PASSWORD:root}

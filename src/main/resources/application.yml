@@ -67,3 +67,7 @@ shared-lib:
       url: ${AUTH_SERVICE_BASE_URL:http://auth-service:8080}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
+  rls:
+    enabled: true
+    header-name: X-Tenant-Id
+    config-key: app.current_user_id
