@@ -67,7 +67,25 @@ shared-lib:
       url: ${AUTH_SERVICE_BASE_URL:http://auth-service:8080}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
+<<<<<<< HEAD
   rls:
     enabled: true
     header-name: X-Tenant-Id
     config-key: app.current_user_id
+=======
+  audit:
+    enabled: true
+    table-name: audit.audit_event
+    service-name: reconciliation-service
+    source-schema: reconciliation
+    hashing-algorithm: SHA-256
+    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+  entity-audit:
+    enabled: true
+    table-name: audit.entity_audit_event
+    service-name: reconciliation-service
+    source-schema: reconciliation
+    source-table: transactions
+    hashing-algorithm: SHA-256
+    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+>>>>>>> org/master

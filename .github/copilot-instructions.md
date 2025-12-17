@@ -22,7 +22,65 @@ com.example.reconciliation/
 └── util/             # Utility classes and helpers
 ```
 
-## Coding Standards
+## API Documentation Standards (Swagger/OpenAPI)
+
+**All REST endpoints and DTOs must be documented using Swagger/OpenAPI annotations.**
+
+### Controller Guidelines
+
+- Annotate each controller class with `@Tag` to describe the API group.
+- Annotate each endpoint method with:
+  - `@Operation` (summary, description, tags, security, etc.)
+  - `@ApiResponses` and one or more `@ApiResponse` for all possible HTTP responses (success, error, not found, etc.)
+  - `@Parameter` for path/query/header parameters if not obvious from method signature.
+- Use `@Schema` on DTO fields for field-level documentation, including descriptions and examples.
+- Document all request/response bodies, path variables, and query parameters.
+- Keep documentation up to date with code changes.
+
+#### Example (Controller)
+
+```java
+@RestController
+@RequestMapping("/api/example")
+@Tag(name = "Example", description = "Example API endpoints")
+public class ExampleController {
+
+  @GetMapping("/{id}")
+  @Operation(summary = "Get example by ID", description = "Returns an example resource by its ID.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Resource found"),
+    @ApiResponse(responseCode = "404", description = "Resource not found")
+  })
+  public ResponseEntity<ExampleDto> getExample(@PathVariable Long id) {
+    // ...
+  }
+}
+```
+
+#### Example (DTO)
+
+```java
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public class ExampleDto {
+  @Schema(description = "Unique identifier", example = "123")
+  private Long id;
+
+  @Schema(description = "Example name", example = "Sample")
+  private String name;
+  // ...
+}
+```
+
+### Best Practices
+
+- Always update Swagger annotations when changing endpoints or DTOs.
+- Use meaningful summaries and descriptions.
+- Include all possible response codes.
+- Use `@Schema` for DTO fields, especially for request/response bodies.
+- Review generated Swagger UI to ensure clarity and completeness.
+
+**Reference:** See `springdoc-openapi` documentation and existing controllers for patterns.
 
 - Follow Spring Boot conventions and existing patterns
 - Use constructor injection for dependencies

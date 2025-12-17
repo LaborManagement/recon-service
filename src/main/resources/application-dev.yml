@@ -61,7 +61,17 @@ app:
 shared-lib:
   audit:
     enabled: true  # Set to true to enable audit logging
-    table-name: audit_event
+    table-name: audit.audit_event
+    service-name: reconciliation-service
+    source-schema: reconciliation
+    hashing-algorithm: SHA-256
+    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+  entity-audit:
+    enabled: true
+    table-name: audit.entity_audit_event
+    service-name: reconciliation-service
+    source-schema: reconciliation
+    source-table: transactions
     hashing-algorithm: SHA-256
     initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
   # SFTP Utility Configuration
