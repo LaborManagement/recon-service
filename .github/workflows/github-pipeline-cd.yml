@@ -1,9 +1,6 @@
 name: Deploy ECS Service - recon
 
 on: 
-  push:
-    paths:
-      - '**'
   workflow_dispatch: 
     inputs:
       image_tag:
