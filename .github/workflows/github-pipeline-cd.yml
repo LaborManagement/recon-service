@@ -18,7 +18,7 @@ env:
   ECR_REPO: 695546167399.dkr.ecr.ap-south-1.amazonaws.com/lms/recon-service
   CONTAINER_NAME: dev-recon-service
   ECS_CLUSTER: lms-services-dev
-  ECS_SERVICE: lms-recon-service-dev-task-service-d4p5ubg2
+  ECS_SERVICE: lms-recon-service-dev-task-service-service-kp9npd1j
 
 jobs:
   deploy:
