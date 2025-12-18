@@ -1,4 +1,4 @@
-name: Deploy ECS Service - Auth
+name: Deploy ECS Service - recon
 
 on: 
   push:
@@ -9,16 +9,16 @@ on:
   workflow_dispatch: 
     inputs:
       image_tag:
-        description: 'ECR Auth Image Tag to deploy'
+        description: 'ECR recon Image Tag to deploy'
         required: true
 
 env:
   AWS_REGION: ap-south-1
-  TASK_FAMILY: lms-auth-service-dev-task
-  ECR_REPO: 695546167399.dkr.ecr.ap-south-1.amazonaws.com/lms/auth-service
-  CONTAINER_NAME: dev-auth-service
+  TASK_FAMILY: lms-recon-service-dev-task
+  ECR_REPO: 695546167399.dkr.ecr.ap-south-1.amazonaws.com/lms/recon-service
+  CONTAINER_NAME: dev-recon-service
   ECS_CLUSTER: lms-services-dev
-  ECS_SERVICE: lms-auth-service-dev-task-service-d4p5ubg2
+  ECS_SERVICE: lms-recon-service-dev-task-service-d4p5ubg2
 
 jobs:
   deploy:

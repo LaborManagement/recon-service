@@ -1,10 +1,7 @@
 # ============================================
-# Dockerfile for auth-service (Multi-stage build)
+# Dockerfile for recon-service (Multi-stage build)
 # Supports: dev, staging, prod environments
 # Compatible with ARM64 (Apple Silicon) and AMD64
-# ============================================
-# For CI/CD: docker build -t auth-service:latest .
-# For local: docker build -t auth-service:latest .
 # ============================================
 
 # ==================== STAGE 1: Build ====================
@@ -13,23 +10,22 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /build
 
 # Copy shared-lib first (if present) and install it
-# In CI, shared-lib is checked out to ./shared-lib directory
 COPY shared-lib/pom.xml ./shared-lib/pom.xml
 COPY shared-lib/src ./shared-lib/src
 
 # Build and install shared-lib to local Maven repository
 RUN cd shared-lib && mvn clean install -DskipTests -B -q
 
-# Copy auth-service pom.xml first for dependency caching
+# Copy recon-service pom.xml first for dependency caching
 COPY pom.xml .
 
 # Download dependencies (cached layer if pom.xml unchanged)
 RUN mvn dependency:go-offline -B -q || true
 
-# Copy auth-service source code
+# Copy recon-service source code
 COPY src ./src
 
-# Build auth-service (shared-lib is now available in local Maven repo)
+# Build recon-service (shared-lib is now available in local Maven repo)
 RUN mvn clean package spring-boot:repackage -DskipTests -B -q
 
 # ==================== STAGE 2: Runtime ====================
@@ -37,7 +33,7 @@ FROM eclipse-temurin:17-jre
 
 # Labels for container metadata
 LABEL maintainer="LMS Team"
-LABEL service="auth-service"
+LABEL service="recon-service"
 LABEL version="1.0"
 
 # Update system packages to patch security vulnerabilities (CVE-2025-64720, CVE-2025-64506, CVE-2025-64505)
@@ -61,7 +57,7 @@ RUN mkdir -p /app/logs /app/config /tmp && \
 VOLUME ["/tmp", "/app/logs"]
 
 # Copy the built jar from builder stage
-COPY --from=builder /build/target/user-auth-service-*.jar app.jar
+COPY --from=builder /build/target/*recon-service-*.jar app.jar
 
 # Change ownership of the jar
 RUN chown appuser:appgroup app.jar
@@ -71,7 +67,7 @@ USER appuser
 
 # Environment variables with defaults
 ENV SPRING_PROFILES_ACTIVE=dev
-ENV SERVER_PORT=8082
+ENV SERVER_PORT=8082 
 
 # JVM options for container environment
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
