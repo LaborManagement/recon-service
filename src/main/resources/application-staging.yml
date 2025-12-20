@@ -84,7 +84,6 @@ shared-lib:
       url: ${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
-<<<<<<< HEAD
     dynamic-rbac:
       enabled: true
       base-url: ${AUTH_BASE_URL:${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}}
@@ -112,24 +111,17 @@ shared-lib:
       max-age: 3600
   audit:
     enabled: true
-    table-name: audit_event
-    service-name: recon-service
-=======
-  audit:
-    enabled: true
     table-name: audit.audit_event
     service-name: reconciliation-service
     source-schema: reconciliation
->>>>>>> org/master
     hashing-algorithm: SHA-256
     initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
   entity-audit:
     enabled: true
     table-name: audit.entity_audit_event
-<<<<<<< HEAD
-    service-name: recon-service
+    service-name: reconciliation-service
     source-schema: reconciliation
-    source-table: reconciliation_records
+    source-table: transactions
     hashing-algorithm: SHA-256
     initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
   # SFTP Utility Configuration
@@ -145,13 +137,6 @@ shared-lib:
     strict-host-key-checking: ${SFTP_STRICT_HOST_KEY_CHECKING:true}
   filters:
     enabled: true
-=======
-    service-name: reconciliation-service
-    source-schema: reconciliation
-    source-table: transactions
-    hashing-algorithm: SHA-256
-    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
->>>>>>> org/master
 
 # Auditing toggle
 auditing:

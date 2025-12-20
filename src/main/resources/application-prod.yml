@@ -145,7 +145,17 @@ app:
 shared-lib:
   audit:
     enabled: true
-    table-name: audit_event
+    table-name: audit.audit_event
+    service-name: reconciliation-service
+    source-schema: reconciliation
+    hashing-algorithm: SHA-256
+    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+  entity-audit:
+    enabled: true
+    table-name: audit.entity_audit_event
+    service-name: reconciliation-service
+    source-schema: reconciliation
+    source-table: transactions
     hashing-algorithm: SHA-256
     initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
   # SFTP Utility Configuration
@@ -170,7 +180,6 @@ shared-lib:
       url: ${AUTH_SERVICE_BASE_URL:http://localhost:8080}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
-<<<<<<< HEAD
     cors:
       enabled: true
       allowed-origins:
@@ -189,20 +198,3 @@ shared-lib:
       max-age: 3600
   filters:
     enabled: true
-=======
-  audit:
-    enabled: true
-    table-name: audit.audit_event
-    service-name: reconciliation-service
-    source-schema: reconciliation
-    hashing-algorithm: SHA-256
-    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
-  entity-audit:
-    enabled: true
-    table-name: audit.entity_audit_event
-    service-name: reconciliation-service
-    source-schema: reconciliation
-    source-table: transactions
-    hashing-algorithm: SHA-256
-    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
->>>>>>> org/master
