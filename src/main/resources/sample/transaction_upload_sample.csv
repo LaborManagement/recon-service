@@ -1,2 +1,2 @@
-txn_ref,request_nmbr,txn_date,txn_amount
-TRF123,EMP-20251220-00000018,2025-10-14,138320.00
+txn_ref,wage_list,txn_date,txn_amount
+TRF123,WR-20251220-00000017,2025-10-14,138320.00
