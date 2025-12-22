@@ -81,14 +81,15 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}/internal/auth/introspect
+      url: ${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}/auth-service/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
     dynamic-rbac:
       enabled: true
       base-url: ${AUTH_BASE_URL:${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}}
-      authorization-matrix-path: /internal/authz/users/{userId}/matrix
-      endpoint-metadata-path: /internal/authz/endpoints/metadata
+      authorization-matrix-path: /auth-service/internal/authz/users/{userId}/matrix
+      endpoint-metadata-path: /auth-service/internal/authz/endpoints/metadata
+      policy-evaluation-path: /auth-service/internal/authz/policies/evaluate
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: ${INTERNAL_API_KEY_HEADER:X-Internal-Api-Key}
       policy-evaluation-enabled: true

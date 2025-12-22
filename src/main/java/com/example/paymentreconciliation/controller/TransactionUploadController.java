@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/v1/reconciliation/transaction-uploads")
+@RequestMapping("/recon-service/api/v1/reconciliation/transaction-uploads")
 @Tag(name = "Transaction Uploads", description = "Upload CSV of transactions for search and claim")
 @SecurityRequirement(name = "Bearer Authentication")
 public class TransactionUploadController {
