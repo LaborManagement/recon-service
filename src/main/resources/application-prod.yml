@@ -140,7 +140,7 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local}/internal/auth/introspect
+      url: ${AUTH_SERVICE_BASE_URL:http://lms-auth-service.internal:8080}/recon-service/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
   audit:

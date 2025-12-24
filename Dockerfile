@@ -1,6 +1,6 @@
 # ============================================
 # Dockerfile for recon-service (Multi-stage build)
-# Supports: dev, staging, prod environments
+# Supports: prod, staging, prod environments
 # Compatible with ARM64 (Apple Silicon) and AMD64
 # ============================================
 
@@ -66,7 +66,7 @@ RUN chown appuser:appgroup app.jar
 USER appuser
 
 # Environment variables with defaults
-ENV SPRING_PROFILES_ACTIVE=dev
+ENV SPRING_PROFILES_ACTIVE=prod
 ENV SERVER_PORT=8082 
 
 # JVM options for container environment
@@ -76,7 +76,7 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
     -XX:+UseG1GC \
     -XX:+HeapDumpOnOutOfMemoryError \
     -XX:HeapDumpPath=/app/logs/heapdump.hprof \
-    -Djava.security.egd=file:/dev/./urandom"
+    -Djava.security.egd=file:/prod/./urandom"
 
 # Expose the application port
 EXPOSE 8082
