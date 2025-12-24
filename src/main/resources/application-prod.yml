@@ -143,6 +143,17 @@ app:
     allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
 
 shared-lib:
+  security:
+    enabled: true
+    permitted-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+    introspection:
+      url: ${AUTH_SERVICE_BASE_URL:http://lms-auth-service.internal:8080}/recon-service/internal/auth/introspect
+      api-key: ${INTERNAL_API_KEY:}
+      api-key-header: X-Internal-Api-Key
   audit:
     enabled: true
     table-name: audit.audit_event
