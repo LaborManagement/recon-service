@@ -1,4 +1,84 @@
 
+spring:
+  datasource:
+    url: jdbc:h2:mem:recondb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        default_schema: reconciliation
+
+mt940:
+  baseDir: ${MT940_BASE_DIR:mt940/}
+  inboxDir: ${MT940_INBOX_DIR:mt940/inbox/}
+  processingDir: ${MT940_PROCESSING_DIR:mt940/processing/}
+  archiveDir: ${MT940_ARCHIVE_DIR:mt940/archive/}
+  quarantineDir: ${MT940_QUARANTINE_DIR:mt940/quarantine/}
+
+van:
+  baseDir: ${VAN_BASE_DIR:van/}
+  inboxDir: ${VAN_INBOX_DIR:van/inbox/}
+  processingDir: ${VAN_PROCESSING_DIR:van/processing/}
+  archiveDir: ${VAN_ARCHIVE_DIR:van/archive/}
+  quarantineDir: ${VAN_QUARANTINE_DIR:van/quarantine/}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    issuer: ${APP_JWT_ISSUER:user-auth-service}
+    audience: ${APP_JWT_AUDIENCE:payment-services}
+    allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
+    expiration: ${APP_JWT_EXPIRATION:86400}
+
+file:
+  upload:
+    base-dir: ${FILE_UPLOAD_DIR:/tmp/uploads/test/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,loggers
+
 # Auditing toggle
 auditing:
   enabled: true
+
+shared-lib:
+  security:
+    enabled: false
+  audit:
+    enabled: true
+    table-name: audit_event
+    service-name: recon-service
+    hashing-algorithm: SHA-256
+    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+  entity-audit:
+    enabled: true
+    table-name: audit.entity_audit_event
+    service-name: recon-service
+    source-schema: reconciliation
+    source-table: reconciliation_records
+    hashing-algorithm: SHA-256
+    initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+  # SFTP Utility Configuration
+  sftp:
+    enabled: false
+    host: ${SFTP_HOST:localhost}
+    port: ${SFTP_PORT:22}
+    username: ${SFTP_USERNAME:user}
+    password: ${SFTP_PASSWORD:password}
+    remote-directory: ${SFTP_REMOTE_DIRECTORY:/incoming}
+    local-directory: ${SFTP_LOCAL_DIRECTORY:/tmp/sftp}
+    known-hosts-file: ${SFTP_KNOWN_HOSTS_FILE:~/.ssh/known_hosts}
+    strict-host-key-checking: ${SFTP_STRICT_HOST_KEY_CHECKING:true}
+  filters:
+    enabled: true
+
+server:
+  port: 0

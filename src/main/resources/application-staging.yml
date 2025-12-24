@@ -24,6 +24,20 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: payment_flow
 
+mt940:
+  baseDir: ${MT940_BASE_DIR:mt940/}
+  inboxDir: ${MT940_INBOX_DIR:mt940/inbox/}
+  processingDir: ${MT940_PROCESSING_DIR:mt940/processing/}
+  archiveDir: ${MT940_ARCHIVE_DIR:mt940/archive/}
+  quarantineDir: ${MT940_QUARANTINE_DIR:mt940/quarantine/}
+
+van:
+  baseDir: ${VAN_BASE_DIR:van/}
+  inboxDir: ${VAN_INBOX_DIR:van/inbox/}
+  processingDir: ${VAN_PROCESSING_DIR:van/processing/}
+  archiveDir: ${VAN_ARCHIVE_DIR:van/archive/}
+  quarantineDir: ${VAN_QUARANTINE_DIR:van/quarantine/}
+
 logging:
   level:
     "[com.example.paymentreconciliation]": INFO
@@ -31,23 +45,32 @@ logging:
     root: INFO
   file:
     name: logs/payment-reconciliation-staging.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] [%X{sessionToken}] [%X{X-Request-ID}] - %msg%n"
 
 file:
   upload:
     base-dir: ${FILE_UPLOAD_DIR:/app/uploads/staging/}
 
+springdoc:
+  paths-to-exclude:
+    - /error
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env
+        include: health,info,metrics,env,loggers,beans
 
 app:
   jwt:
     secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     issuer: ${APP_JWT_ISSUER:user-auth-service}
     audience: ${APP_JWT_AUDIENCE:payment-services}
+    allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
     expiration: ${APP_JWT_EXPIRATION:86400}
+  swagger:
+    title: "Payment Reconciliation Service API"
 
 shared-lib:
   security:
@@ -58,9 +81,35 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}/internal/auth/introspect
+      url: ${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}/auth-service/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
+    dynamic-rbac:
+      enabled: true
+      base-url: ${AUTH_BASE_URL:${AUTH_SERVICE_BASE_URL:http://auth-service.payment-recon.svc.cluster.local:8080}}
+      authorization-matrix-path: /auth-service/internal/authz/users/{userId}/matrix
+      endpoint-metadata-path: /auth-service/internal/authz/endpoints/metadata
+      policy-evaluation-path: /auth-service/internal/authz/policies/evaluate
+      api-key: ${INTERNAL_API_KEY:}
+      api-key-header: ${INTERNAL_API_KEY_HEADER:X-Internal-Api-Key}
+      policy-evaluation-enabled: true
+      fail-open: false
+    cors:
+      enabled: true
+      allowed-origins:
+        - ${ALLOWED_ORIGIN_1:http://localhost:5173}
+        - ${ALLOWED_ORIGIN_2:http://localhost:5174}
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - PATCH
+      allowed-headers:
+        - "*"
+      allow-credentials: true
+      max-age: 3600
   audit:
     enabled: true
     table-name: audit.audit_event
@@ -76,6 +125,19 @@ shared-lib:
     source-table: transactions
     hashing-algorithm: SHA-256
     initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
+  # SFTP Utility Configuration
+  sftp:
+    enabled: false
+    host: ${SFTP_HOST:localhost}
+    port: ${SFTP_PORT:22}
+    username: ${SFTP_USERNAME:user}
+    password: ${SFTP_PASSWORD:password}
+    remote-directory: ${SFTP_REMOTE_DIRECTORY:/incoming}
+    local-directory: ${SFTP_LOCAL_DIRECTORY:/tmp/sftp}
+    known-hosts-file: ${SFTP_KNOWN_HOSTS_FILE:~/.ssh/known_hosts}
+    strict-host-key-checking: ${SFTP_STRICT_HOST_KEY_CHECKING:true}
+  filters:
+    enabled: true
 
 # Auditing toggle
 auditing:

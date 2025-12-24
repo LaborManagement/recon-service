@@ -2,27 +2,31 @@
 spring:
   datasource:
     # PostgreSQL connection for reconciliation service with RLS/VPD
-    url: jdbc:postgresql://localhost:5432/labormanagement?currentSchema=reconciliation
+    #url: jdbc:postgresql://localhost:5432/lbe?currentSchema=reconciliation
+    url: ${DB_URL:jdbc:postgresql://lbe-dbinstance.cd0sc0k82p15.ap-south-1.rds.amazonaws.com:5432/lbe?sslmode=require&currentSchema=reconciliation}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:app_reconciliation}
-    password: ${DB_PASSWORD:change-me-in-production}
+    password: ${DB_PASSWORD:root}
     # HikariCP connection pooling configuration
     # CRITICAL: These settings ensure transaction-local RLS context persists
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
-      idle-timeout: 600000          # 10 minutes
-      max-lifetime: 1800000         # 30 minutes
+      idle-timeout: 0               # keep connections warm when tunneling to RDS
+      max-lifetime: 1700000         # recycle a bit under 30 minutes
       connection-timeout: 30000     # 30 seconds
       auto-commit: true             # Important: allows transaction-local settings
       leak-detection-threshold: 60000  # 1 minute
       data-source-properties:
-        preparedStatementCacheSize: 250
-        preparedStatementCacheSqlLimit: 2048
+        preparedStatementCacheQueries: 256
+        preparedStatementCacheSizeMiB: 5
+        reWriteBatchedInserts: true
+        tcpKeepAlive: true
+      keepalive-time: 300000        # ping every 5 minutes to avoid idle drops
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -32,8 +36,8 @@ spring:
 logging:
   level:
     "[com.example.paymentreconciliation]": DEBUG
-    "[org.hibernate.SQL]": DEBUG
-    "[org.hibernate.type.descriptor.sql.BasicBinder]": TRACE
+    "[org.hibernate.SQL]": ${LOG_SQL_LEVEL:WARN}
+    "[org.hibernate.type.descriptor.sql.BasicBinder]": ${LOG_SQL_BINDER_LEVEL:WARN}
   file:
     name: logs/dev.log
   pattern:
@@ -49,9 +53,10 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     issuer: ${APP_JWT_ISSUER:user-auth-service}
-    audience: ${APP_JWT_AUDIENCE:payment-services}
+    audience: ${APP_JWT_AUDIENCE:recon-service}
+    allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
     expiration: ${APP_JWT_EXPIRATION:86400}
-    
+
 # Audit Utility Configuration
 shared-lib:
   audit:
@@ -88,11 +93,28 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: http://localhost:8080/internal/auth/introspect
-      api-key: ${INTERNAL_API_KEY:}
+      url: http://localhost:8080/auth-service/internal/auth/introspect
+      api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
+    cors:
+      enabled: true
+      allowed-origins:
+        - http://localhost:5173
+        - http://localhost:5174
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+        - PATCH
+      allowed-headers:
+        - "*"
+      allow-credentials: true
+      max-age: 3600
   filters:
     enabled: true   
+  
 
 server:
   port: 8082
