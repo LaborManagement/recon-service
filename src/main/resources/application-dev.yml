@@ -101,6 +101,7 @@ shared-lib:
       allowed-origins:
         - http://localhost:5173
         - http://localhost:5174
+        - https://master.d1d3zs9vbo6lnu.amplifyapp.com
       allowed-methods:
         - GET
         - POST
