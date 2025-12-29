@@ -65,7 +65,7 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_SERVICE_BASE_URL:http://auth-service:8080}/internal/auth/introspect
+      url: ${AUTH_SERVICE_BASE_URL:http://auth-service:8080}/auth-service/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:}
       api-key-header: X-Internal-Api-Key
   rls:

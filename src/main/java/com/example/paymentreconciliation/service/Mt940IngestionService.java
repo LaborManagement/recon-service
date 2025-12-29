@@ -257,6 +257,22 @@ public class Mt940IngestionService extends BaseIngestionService {
                 continue;
             }
 
+            // Normalize and validate currency (must be 3-letter code)
+            String normalizedCurrency = normalizeCurrency(stmt.currency);
+            String openingCurrency = normalizeCurrency(stmt.openingBalance.currency);
+            String closingCurrency = normalizeCurrency(stmt.closingBalance.currency);
+            if (normalizedCurrency == null || openingCurrency == null || closingCurrency == null) {
+                log.error("Invalid currency code (must be 3 letters). stmt={}, open={}, close={}",
+                        stmt.currency, stmt.openingBalance.currency, stmt.closingBalance.currency);
+                persistImportError(importRun, fileHash, "VALIDATION_ERROR",
+                        "Invalid currency code (must be 3 letters)", null, null);
+                failedStatements++;
+                continue;
+            }
+            stmt.currency = normalizedCurrency;
+            stmt.openingBalance.currency = openingCurrency;
+            stmt.closingBalance.currency = closingCurrency;
+
             // 2. Find or create BankAccount
             log.debug("Finding or creating BankAccount for accountNo={}, currency={}", stmt.accountNo, stmt.currency);
             BankAccount acct = bankAccountRepository.findByAccountNoAndCurrency(stmt.accountNo, stmt.currency)
@@ -332,6 +348,11 @@ public class Mt940IngestionService extends BaseIngestionService {
             // Other balances
             if (stmt.otherBalances != null) {
                 for (Mt940Parser.Balance bal : stmt.otherBalances) {
+                    bal.currency = normalizeCurrency(bal.currency);
+                    if (bal.currency == null) {
+                        log.warn("Skipping balance with invalid currency: {}", bal);
+                        continue;
+                    }
                     StatementBalance b = new StatementBalance();
                     b.setStatementFile(sf);
                     b.setBalType(bal.type);
@@ -345,6 +366,7 @@ public class Mt940IngestionService extends BaseIngestionService {
 
             // 7. Persist transactions
             for (Mt940Parser.Transaction txn : stmt.transactions) {
+                txn.currency = normalizedCurrency;
                 StatementTransaction st = new StatementTransaction();
                 st.setStatementFile(sf);
                 st.setLineNo(txn.lineNo);
@@ -353,7 +375,7 @@ public class Mt940IngestionService extends BaseIngestionService {
                 st.setDc(txn.dc);
                 st.setAmount(new java.math.BigDecimal(txn.amount.replace(",", ".")));
                 st.setSignedAmount(new java.math.BigDecimal(txn.signedAmount.replace(",", ".")));
-                st.setCurrency(txn.currency);
+                st.setCurrency(normalizedCurrency);
                 st.setTxnTypeCode(txn.txnTypeCode);
                 st.setBankReference(txn.bankReference);
                 st.setCustomerReference(txn.customerReference);
@@ -414,6 +436,16 @@ public class Mt940IngestionService extends BaseIngestionService {
         importRunRepository.save(importRun);
     }
     
+    private String normalizeCurrency(String currency) {
+        if (currency == null) return null;
+        // Keep only letters; MT940 currency should be 3-letter ISO code, but some feeds add trailing chars
+        String lettersOnly = currency.trim().toUpperCase().replaceAll("[^A-Z]", "");
+        if (lettersOnly.length() < 3) {
+            return null;
+        }
+        return lettersOnly.substring(0, 3);
+    }
+
 
     /**
      * Persist import error details (stub).
