@@ -93,7 +93,7 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: http://localhost:8080/auth-service/internal/auth/introspect
+      url: ${AUTH_BASE_URL:http://auth-service:8080/auth-service}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
     cors:
@@ -120,15 +120,14 @@ server:
   port: 8082
 
 mt940:
-  baseDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/
-  inboxDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/inbox
-  processingDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/processing
-  archiveDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/archive
-  quarantineDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/quarantine
-
+  baseDir: /recon-service/mt940/
+  inboxDir: /recon-service/mt940/inbox
+  processingDir: /recon-service/mt940/processing
+  archiveDir: /recon-service/mt940/archive
+  quarantineDir: /recon-service/mt940/quarantine
 van:
-  baseDir: /path/to/van/base
-  inboxDir: /path/to/van/inbox
-  processingDir: /path/to/van/processing
-  archiveDir: /path/to/van/archive
-  quarantineDir: /path/to/van/quarantine
+  baseDir: /recon-service/van/
+  inboxDir: /recon-service/van/inbox
+  processingDir: /recon-service/van/processing
+  archiveDir: /recon-service/van/archive
+  quarantineDir: /recon-service/van/quarantine
