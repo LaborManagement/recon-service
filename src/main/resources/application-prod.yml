@@ -1,4 +1,4 @@
-# Production environment configuration for Azure Container Apps with Azure Database for PostgreSQL
+# Development environment configuration
 spring:
   datasource:
     # PostgreSQL connection for reconciliation service with RLS/VPD
@@ -19,11 +19,10 @@ spring:
       auto-commit: true  # Important: allows transaction-local RLS context to persist
   jpa:
     hibernate:
-      ddl-auto: validate  # Don't auto-create tables in prod
-    show-sql: false
+      ddl-auto: none
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        # dialect: org.hibernate.dialect.MySQLDialect
         dialect: org.hibernate.dialect.PostgreSQLDialect
         "[format_sql]": false
         jdbc:
@@ -44,18 +43,12 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
-# Auditing toggle
-auditing:
-  enabled: true
 
 logging:
   level:
-    "[com.example.paymentreconciliation]": INFO
-    "[org.hibernate.SQL]": WARN
-    "[org.springframework.web]": WARN
-    root: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+    "[com.example.paymentreconciliation]": DEBUG
+    "[org.hibernate.SQL]": ${LOG_SQL_LEVEL:WARN}
+    "[org.hibernate.type.descriptor.sql.BasicBinder]": ${LOG_SQL_BINDER_LEVEL:WARN}
   file:
     name: ${LOG_FILE:/tmp/logs/payment-reconciliation.log}
     max-size: 100MB
@@ -137,15 +130,17 @@ server:
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET}
+    secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     issuer: ${APP_JWT_ISSUER:user-auth-service}
-    audience: ${APP_JWT_AUDIENCE:payment-services}
+    audience: ${APP_JWT_AUDIENCE:recon-service}
+    allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
     expiration: ${APP_JWT_EXPIRATION:86400}
     allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
 
+# Audit Utility Configuration
 shared-lib:
   audit:
-    enabled: true
+    enabled: true  # Set to true to enable audit logging
     table-name: audit.audit_event
     service-name: reconciliation-service
     source-schema: reconciliation
