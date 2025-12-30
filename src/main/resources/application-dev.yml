@@ -10,19 +10,19 @@ spring:
     # HikariCP connection pooling configuration
     # CRITICAL: These settings ensure transaction-local RLS context persists
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 0               # keep connections warm when tunneling to RDS
-      max-lifetime: 1700000         # recycle a bit under 30 minutes
-      connection-timeout: 30000     # 30 seconds
+      maximum-pool-size: 8
+      minimum-idle: 2
+      idle-timeout: 60000           # drop idle connections after 60s
+      max-lifetime: 600000          # recycle before RDS reaps
+      connection-timeout: 20000     # wait briefly for a slot before failing
       auto-commit: true             # Important: allows transaction-local settings
-      leak-detection-threshold: 60000  # 1 minute
+      leak-detection-threshold: 30000  # 30s while tuning
       data-source-properties:
         preparedStatementCacheQueries: 256
         preparedStatementCacheSizeMiB: 5
         reWriteBatchedInserts: true
         tcpKeepAlive: true
-      keepalive-time: 300000        # ping every 5 minutes to avoid idle drops
+      keepalive-time: 30000         # lightweight keepalive; under idle-timeout
   jpa:
     hibernate:
       ddl-auto: none
@@ -101,7 +101,6 @@ shared-lib:
       allowed-origins:
         - http://localhost:5173
         - http://localhost:5174
-        - http://ec2-3-110-43-214.ap-south-1.compute.amazonaws.com
       allowed-methods:
         - GET
         - POST
@@ -121,11 +120,11 @@ server:
   port: 8082
 
 mt940:
-  baseDir: /path/to/mt940/base
-  inboxDir: /path/to/mt940/inbox
-  processingDir: /path/to/mt940/processing
-  archiveDir: /path/to/mt940/archive
-  quarantineDir: /path/to/mt940/quarantine
+  baseDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/
+  inboxDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/inbox
+  processingDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/processing
+  archiveDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/archive
+  quarantineDir: /Users/rahulcharvekar/Documents/Repos/LBE/PaymentReconciliation/recon-service/mt940/quarantine
 
 van:
   baseDir: /path/to/van/base
