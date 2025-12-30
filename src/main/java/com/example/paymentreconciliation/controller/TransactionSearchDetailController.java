@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/v1/reconciliation/transaction-search-details")
+@RequestMapping("/recon-service/api/v1/reconciliation/transaction-search-details")
 @Tag(name = "Transaction Search Details", description = "Summary aggregation over uploaded transaction_search_details")
 @SecurityRequirement(name = "Bearer Authentication")
 public class TransactionSearchDetailController {

@@ -32,7 +32,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/v1/reconciliation/bank-transactions")
+@RequestMapping("/recon-service/api/v1/reconciliation/bank-transactions")
 @Tag(name = "Reconciliation Bank Transactions", description = "APIs to search bank transactions from reconciliation database")
 @SecurityRequirement(name = "Bearer Authentication")
 public class BankTransactionController {
