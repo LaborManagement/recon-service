@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/recon-service/api/mt940")
+@RequestMapping("/api/mt940")
 @Tag(name = "MT940 Ingestion", description = "APIs for MT940 file ingestion and processing")
 @SecurityRequirement(name = "Bearer Authentication")
 public class Mt940IngestionController {

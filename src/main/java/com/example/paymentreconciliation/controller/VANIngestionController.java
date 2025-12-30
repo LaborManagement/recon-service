@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/recon-service/api/van")
+@RequestMapping("/api/van")
 @Tag(name = "VAN Ingestion", description = "APIs for VAN CSV file ingestion and processing")
 @SecurityRequirement(name = "Bearer Authentication")
 public class VANIngestionController {
