@@ -14,8 +14,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.csv.CSVFormat;
@@ -104,9 +106,9 @@ public class TransactionUploadService {
                 TransactionSearchDetail detail = toDetail(record, upload, boardId, employerId, toliId);
                 if (detail.getStatus() != TransactionSearchDetail.Status.FAILED
                         && hasText(detail.getRequestNmbr())
-                        && !requestNumberExists(detail.getRequestNmbr(), boardId, employerId)) {
+                        && !wageListExists(detail.getRequestNmbr(), boardId, employerId)) {
                     detail.setStatus(TransactionSearchDetail.Status.FAILED);
-                    detail.setError("Invalid request_nmbr '" + detail.getRequestNmbr() + "'; employer receipt not found");
+                    detail.setError("Invalid wage_list '" + detail.getRequestNmbr() + "'; worker receipt not found");
                     invalidRequestRows++;
                     rejectUpload = true;
                 }
@@ -133,7 +135,7 @@ public class TransactionUploadService {
             for (TransactionSearchDetail detail : details) {
                 if (detail.getStatus() != TransactionSearchDetail.Status.FAILED) {
                     detail.setStatus(TransactionSearchDetail.Status.FAILED);
-                    detail.setError("Upload rejected because request_nmbr not found");
+                    detail.setError("Upload rejected because wage_list not found");
                 }
             }
             failedRows = details.size();
@@ -143,7 +145,7 @@ public class TransactionUploadService {
         upload.setTotalRows(details.size());
         if (rejectUpload) {
             upload.setStatus(TransactionUpload.Status.FAILED);
-            upload.setErrorMessage("Invalid request_nmbr found; upload rejected");
+            upload.setErrorMessage("Invalid wage_list found; upload rejected");
         } else {
             upload.setStatus(TransactionUpload.Status.LOADED);
             upload.setErrorMessage(failedRows > 0 ? "Some rows failed validation" : null);
@@ -176,7 +178,7 @@ public class TransactionUploadService {
         detail.setDescription(coalesce(record, "description", null));
         detail.setTxnType(coalesce(record, "txn_type", "UPI"));
         detail.setTxnRef(required(record, "txn_ref", lineNo));
-        detail.setRequestNmbr(coalesce(record, "request_nmbr", null));
+        detail.setRequestNmbr(coalesce(record, "wage_list", null));
         detail.setCreatedAt(LocalDateTime.now());
 
         try {
@@ -268,20 +270,20 @@ public class TransactionUploadService {
         }
     }
 
-    private boolean requestNumberExists(String requestNmbr, Long boardId, Long employerId) {
-        if (!hasText(requestNmbr) || boardId == null || employerId == null) {
+    private boolean wageListExists(String wageList, Long boardId, Long employerId) {
+        if (!hasText(wageList) || boardId == null || employerId == null) {
             return false;
         }
         String sql = """
                 SELECT EXISTS(
                     SELECT 1
-                      FROM payment_flow.employer_payment_receipts
-                     WHERE employer_receipt_number = :requestNmbr
+                      FROM payment_flow.worker_payment_receipts
+                     WHERE receipt_number = :wageList
                        AND board_id = :boardId
                        AND employer_id = :employerId)
                 """;
-        java.util.Map<String, Object> params = new java.util.HashMap<>();
-        params.put("requestNmbr", requestNmbr.trim());
+        Map<String, Object> params = new HashMap<>();
+        params.put("wageList", wageList.trim());
         params.put("boardId", boardId);
         params.put("employerId", employerId);
         Boolean exists = jdbcTemplate.queryForObject(sql, params, Boolean.class);
