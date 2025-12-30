@@ -67,7 +67,7 @@ USER appuser
 
 # Environment variables with defaults
 ENV SPRING_PROFILES_ACTIVE=prod
-ENV SERVER_PORT=8083
+ENV SERVER_PORT=8082
 
 # JVM options for container environment
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
