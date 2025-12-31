@@ -93,7 +93,7 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_BASE_URL:http://auth-service:8080/auth-service}/internal/auth/introspect
+      url: ${AUTH_BASE_URL:http://localhost:8080/auth-service}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
     cors:
