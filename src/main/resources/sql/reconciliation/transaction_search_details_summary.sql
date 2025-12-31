@@ -1,4 +1,4 @@
-SELECT d.request_nmbr,
+SELECT COALESCE(d.request_nmbr, d.txn_ref) AS request_nmbr,
        d.status,
        COUNT(*) AS total_transactions,
        COALESCE(SUM(d.txn_amount), 0) AS total_amount

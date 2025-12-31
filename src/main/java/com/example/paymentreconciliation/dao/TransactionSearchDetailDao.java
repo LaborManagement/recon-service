@@ -38,6 +38,8 @@ public class TransactionSearchDetailDao {
         String baseSql = sqlTemplates.load(SUMMARY_SELECT_TEMPLATE);
         StringBuilder sql = new StringBuilder(baseSql);
         Map<String, Object> params = new HashMap<>();
+        // Fall back to txn_ref when request number is absent so the response always carries an identifier.
+        String requestNmbrExpr = "COALESCE(d.request_nmbr, d.txn_ref)";
 
         sql.append(" AND d.board_id = :boardId");
         sql.append(" AND d.employer_id = :employerId");
@@ -51,7 +53,7 @@ public class TransactionSearchDetailDao {
         params.put("endDate", endDate);
 
         if (hasText(request.getRequestNmbr())) {
-            sql.append(" AND d.request_nmbr = :requestNmbr");
+            sql.append(" AND ").append(requestNmbrExpr).append(" = :requestNmbr");
             params.put("requestNmbr", request.getRequestNmbr().trim());
         }
         if (hasText(request.getStatus())) {
@@ -63,8 +65,8 @@ public class TransactionSearchDetailDao {
             params.put("uploadId", request.getUploadId());
         }
 
-        sql.append(" GROUP BY d.request_nmbr, d.status");
-        sql.append(" ORDER BY d.request_nmbr NULLS FIRST, d.status");
+        sql.append(" GROUP BY ").append(requestNmbrExpr).append(", d.status");
+        sql.append(" ORDER BY ").append(requestNmbrExpr).append(" NULLS FIRST, d.status");
 
         log.debug("Executing summary transaction_search_details SQL: {} with params {}", sql, params);
         return jdbcTemplate.query(
@@ -75,11 +77,12 @@ public class TransactionSearchDetailDao {
 
     public List<com.example.paymentreconciliation.model.MatchedTxnView> searchMatchedTxns(
             TransactionSearchDetailSearchRequest request,
-            TenantAccessDao.TenantAccess tenant,
-            LocalDate startDate,
-            LocalDate endDate) {
+        TenantAccessDao.TenantAccess tenant,
+        LocalDate startDate,
+        LocalDate endDate) {
+        String requestNmbrExpr = "COALESCE(d.request_nmbr, d.txn_ref)";
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT d.matched_txn_id, d.txn_type, d.request_nmbr\n");
+        sql.append("SELECT d.matched_txn_id, d.txn_type, ").append(requestNmbrExpr).append(" AS request_nmbr\n");
         sql.append("FROM reconciliation.transaction_search_details d\n");
         sql.append("WHERE 1=1\n");
 
@@ -97,7 +100,7 @@ public class TransactionSearchDetailDao {
         params.put("endDate", endDate);
 
         if (hasText(request.getRequestNmbr())) {
-            sql.append(" AND d.request_nmbr = :requestNmbr");
+            sql.append(" AND ").append(requestNmbrExpr).append(" = :requestNmbr");
             params.put("requestNmbr", request.getRequestNmbr().trim());
         }
         // Only include matched transactions that are in FOUND status
@@ -139,8 +142,9 @@ public class TransactionSearchDetailDao {
             TenantAccessDao.TenantAccess tenant,
             LocalDate startDate,
             LocalDate endDate) {
+        String requestNmbrExpr = "COALESCE(d.request_nmbr, d.txn_ref)";
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT d.request_nmbr, d.txn_date, d.txn_ref, d.txn_amount, d.status::text\n");
+        sql.append("SELECT ").append(requestNmbrExpr).append(" AS request_nmbr, d.txn_date, d.txn_ref, d.txn_amount, d.status::text\n");
         sql.append("FROM reconciliation.transaction_search_details d\n");
         sql.append("WHERE 1=1\n");
 
@@ -161,7 +165,7 @@ public class TransactionSearchDetailDao {
 
         // Optional filters
         if (hasText(request.getRequestNmbr())) {
-            sql.append(" AND d.request_nmbr = :requestNmbr");
+            sql.append(" AND ").append(requestNmbrExpr).append(" = :requestNmbr");
             params.put("requestNmbr", request.getRequestNmbr().trim());
         }
         if (hasText(request.getStatus())) {
@@ -216,7 +220,7 @@ public class TransactionSearchDetailDao {
         log.info("Fetching transaction search details for download: requestNmbr={}, status={}", requestNmbr, status);
 
         String sql = """
-                SELECT request_nmbr,
+                SELECT COALESCE(request_nmbr, txn_ref) AS request_nmbr,
                        txn_date,
                        txn_ref,
                        txn_amount,
@@ -224,7 +228,7 @@ public class TransactionSearchDetailDao {
                 FROM reconciliation.transaction_search_details
                 WHERE board_id = :boardId
                   AND employer_id = :employerId
-                  AND request_nmbr = :requestNmbr
+                  AND COALESCE(request_nmbr, txn_ref) = :requestNmbr
                   AND status = :status
                 ORDER BY txn_date, id
                 """;
