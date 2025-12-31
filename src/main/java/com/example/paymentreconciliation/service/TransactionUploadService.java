@@ -15,10 +15,12 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -42,6 +44,7 @@ public class TransactionUploadService {
 
     private static final Logger log = LoggerFactoryProvider.getLogger(TransactionUploadService.class);
     private static final long MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50MB
+    private static final int TXN_REF_DUP_CHECK_BATCH_SIZE = 500;
 
     private final TransactionUploadRepository uploadRepository;
     private final TransactionSearchDetailRepository detailRepository;
@@ -87,8 +90,8 @@ public class TransactionUploadService {
         upload = uploadRepository.save(upload);
 
         int failedRows = 0;
-        int invalidRequestRows = 0;
         boolean rejectUpload = false;
+        String rejectionReason = null;
         List<TransactionSearchDetail> details = new ArrayList<>();
         try (Reader reader = new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8);
                 CSVParser parser = CSVFormat.DEFAULT
@@ -103,14 +106,20 @@ public class TransactionUploadService {
             }
 
             for (CSVRecord record : parser) {
-                TransactionSearchDetail detail = toDetail(record, upload, boardId, employerId, toliId);
+                String originalRequestNmbr = extractRequestNmbr(record);
+                String storedRequestNmbr = appendUploadScopedRequestNmbr(originalRequestNmbr, upload.getId());
+                TransactionSearchDetail detail = toDetail(record, upload, boardId, employerId, toliId,
+                        storedRequestNmbr);
                 if (detail.getStatus() != TransactionSearchDetail.Status.FAILED
-                        && hasText(detail.getRequestNmbr())
-                        && !wageListExists(detail.getRequestNmbr(), boardId, employerId)) {
+                        && hasText(originalRequestNmbr)
+                        && !wageListExists(originalRequestNmbr, boardId, employerId)) {
                     detail.setStatus(TransactionSearchDetail.Status.FAILED);
-                    detail.setError("Invalid wage_list '" + detail.getRequestNmbr() + "'; worker receipt not found");
-                    invalidRequestRows++;
+                    detail.setError("Invalid request_nmbr/wage_list '" + originalRequestNmbr
+                            + "'; worker receipt not found");
                     rejectUpload = true;
+                    if (rejectionReason == null) {
+                        rejectionReason = "Upload rejected because request_nmbr/wage_list not found";
+                    }
                 }
                 if (detail.getStatus() == TransactionSearchDetail.Status.FAILED) {
                     failedRows++;
@@ -131,11 +140,28 @@ public class TransactionUploadService {
             throw new IllegalArgumentException("No records found in CSV");
         }
 
+        if (!rejectUpload) {
+            Set<String> duplicateFoundTxnRefs = findExistingFoundTxnRefs(details, boardId, employerId, toliId);
+            if (!duplicateFoundTxnRefs.isEmpty()) {
+                rejectUpload = true;
+                rejectionReason = "Upload rejected because txn_ref already reconciled: "
+                        + String.join(", ", duplicateFoundTxnRefs);
+                for (TransactionSearchDetail detail : details) {
+                    if (detail.getStatus() != TransactionSearchDetail.Status.FAILED
+                            && duplicateFoundTxnRefs.contains(detail.getTxnRef())) {
+                        detail.setStatus(TransactionSearchDetail.Status.FAILED);
+                        detail.setError("txn_ref already reconciled (FOUND)");
+                    }
+                }
+            }
+        }
+
         if (rejectUpload) {
+            String rejectionMessage = rejectionReason != null ? rejectionReason : "Upload rejected";
             for (TransactionSearchDetail detail : details) {
                 if (detail.getStatus() != TransactionSearchDetail.Status.FAILED) {
                     detail.setStatus(TransactionSearchDetail.Status.FAILED);
-                    detail.setError("Upload rejected because wage_list not found");
+                    detail.setError(rejectionMessage);
                 }
             }
             failedRows = details.size();
@@ -145,7 +171,7 @@ public class TransactionUploadService {
         upload.setTotalRows(details.size());
         if (rejectUpload) {
             upload.setStatus(TransactionUpload.Status.FAILED);
-            upload.setErrorMessage("Invalid wage_list found; upload rejected");
+            upload.setErrorMessage(rejectionReason != null ? rejectionReason : "Upload rejected");
         } else {
             upload.setStatus(TransactionUpload.Status.LOADED);
             upload.setErrorMessage(failedRows > 0 ? "Some rows failed validation" : null);
@@ -166,7 +192,7 @@ public class TransactionUploadService {
     }
 
     private TransactionSearchDetail toDetail(CSVRecord record, TransactionUpload upload, Long defaultBoardId,
-            Long defaultEmployerId, Long defaultToliId) {
+            Long defaultEmployerId, Long defaultToliId, String requestNmbrToStore) {
         int lineNo = (int) record.getRecordNumber();
         TransactionSearchDetail detail = new TransactionSearchDetail();
         detail.setUpload(upload);
@@ -178,7 +204,7 @@ public class TransactionUploadService {
         detail.setDescription(coalesce(record, "description", null));
         detail.setTxnType(coalesce(record, "txn_type", "UPI"));
         detail.setTxnRef(required(record, "txn_ref", lineNo));
-        detail.setRequestNmbr(coalesce(record, "wage_list", null));
+        detail.setRequestNmbr(requestNmbrToStore);
         detail.setCreatedAt(LocalDateTime.now());
 
         try {
@@ -268,6 +294,68 @@ public class TransactionUploadService {
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException("Invalid txn_amount: " + value);
         }
+    }
+
+    private Set<String> findExistingFoundTxnRefs(List<TransactionSearchDetail> details, Long boardId,
+            Long employerId, Long toliId) {
+        Set<String> txnRefs = new LinkedHashSet<>();
+        for (TransactionSearchDetail detail : details) {
+            String txnRef = detail.getTxnRef();
+            if (hasText(txnRef)) {
+                txnRefs.add(txnRef.trim());
+            }
+        }
+        Set<String> duplicates = new LinkedHashSet<>();
+        if (txnRefs.isEmpty() || boardId == null || employerId == null) {
+            return duplicates;
+        }
+
+        List<String> batch = new ArrayList<>(TXN_REF_DUP_CHECK_BATCH_SIZE);
+        for (String txnRef : txnRefs) {
+            batch.add(txnRef);
+            if (batch.size() == TXN_REF_DUP_CHECK_BATCH_SIZE) {
+                duplicates.addAll(queryFoundTxnRefs(batch, boardId, employerId, toliId));
+                batch.clear();
+            }
+        }
+        if (!batch.isEmpty()) {
+            duplicates.addAll(queryFoundTxnRefs(batch, boardId, employerId, toliId));
+        }
+        return duplicates;
+    }
+
+    private List<String> queryFoundTxnRefs(List<String> txnRefs, Long boardId, Long employerId, Long toliId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("boardId", boardId);
+        params.put("employerId", employerId);
+        params.put("toliId", toliId);
+        params.put("txnRefs", txnRefs);
+
+        String sql = """
+                SELECT DISTINCT txn_ref
+                  FROM reconciliation.transaction_search_details
+                 WHERE status = 'FOUND'
+                   AND board_id = :boardId
+                   AND employer_id = :employerId
+                   AND COALESCE(toli_id, 0) = COALESCE(:toliId, 0)
+                   AND txn_ref IN (:txnRefs)
+                """;
+        return jdbcTemplate.query(sql, params, (rs, rowNum) -> rs.getString("txn_ref"));
+    }
+
+    private String extractRequestNmbr(CSVRecord record) {
+        String requestNmbr = coalesce(record, "request_nmbr", null);
+        if (requestNmbr == null) {
+            requestNmbr = coalesce(record, "wage_list", null);
+        }
+        return requestNmbr;
+    }
+
+    private String appendUploadScopedRequestNmbr(String requestNmbr, Long uploadId) {
+        if (!hasText(requestNmbr) || uploadId == null) {
+            return requestNmbr;
+        }
+        return requestNmbr.trim() + "-" + uploadId;
     }
 
     private boolean wageListExists(String wageList, Long boardId, Long employerId) {
