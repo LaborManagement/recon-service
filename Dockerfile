@@ -27,6 +27,24 @@ RUN mkdir -p /tmp/uploads /tmp/logs && \
 	chown -R appuser:appuser ${APP_HOME}
 COPY --from=build --chown=appuser:appuser /workspace/target/reconciliation-service-0.0.1-SNAPSHOT.jar app.jar
 USER appuser
+
+# Environment variables with defaults
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8082
+
+# JVM options for container environment
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:InitialRAMPercentage=50.0 \
+    -XX:+UseG1GC \
+    -XX:+HeapDumpOnOutOfMemoryError \
+    -XX:HeapDumpPath=/app/logs/heapdump.hprof \
+    -Djava.security.egd=file:/prod/./urandom"
+
+# Expose the application port
+EXPOSE 8082
+
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 	CMD wget --no-verbose --tries=1 --spider http://localhost:${SERVER_PORT}/actuator/health || exit 1
 EXPOSE ${SERVER_PORT}

@@ -10,17 +10,13 @@ spring:
     hikari:
       maximum-pool-size: 8
       minimum-idle: 2
-      idle-timeout: 60000           # drop idle connections after 60s
-      max-lifetime: 600000          # recycle before RDS reaps
-      connection-timeout: 20000     # wait briefly for a slot before failing
-      auto-commit: true             # Important: allows transaction-local settings
-      leak-detection-threshold: 30000  # 30s while tuning
-      data-source-properties:
-        preparedStatementCacheQueries: 256
-        preparedStatementCacheSizeMiB: 5
-        reWriteBatchedInserts: true
-        tcpKeepAlive: true
-      keepalive-time: 30000         # lightweight keepalive; under idle-timeout
+      idle-timeout: 60000
+      max-lifetime: 600000
+      keepalive-time: 30000
+      connection-timeout: 20000
+      leak-detection-threshold: 30000
+      connection-test-query: SELECT 1
+      auto-commit: true  # Important: allows transaction-local RLS context to persist
   jpa:
     hibernate:
       ddl-auto: validate  # Don't auto-create tables in prod
@@ -182,14 +178,14 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_BASE_URL:http://auth-service:8080/auth-service}/internal/auth/introspect
+      url: ${AUTH_SERVICE_BASE_URL:http://localhost:8080}/auth-service/nal/auth/introspect
       api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
     cors:
       enabled: true
       allowed-origins:
-        - http://localhost:5173
-        - http://localhost:5174
+        - ${ALLOWED_ORIGIN_1:http://localhost:5173}
+        - ${ALLOWED_ORIGIN_2:http://localhost:5174}
       allowed-methods:
         - GET
         - POST
@@ -202,21 +198,4 @@ shared-lib:
       allow-credentials: true
       max-age: 3600
   filters:
-    enabled: true   
-  
-
-server:
-  port: 8082
-
-mt940:
-  baseDir: /recon-service/mt940/
-  inboxDir: /recon-service/mt940/inbox
-  processingDir: /recon-service/mt940/processing
-  archiveDir: /recon-service/mt940/archive
-  quarantineDir: /recon-service/mt940/quarantine
-van:
-  baseDir: /recon-service/van/
-  inboxDir: /recon-service/van/inbox
-  processingDir: /recon-service/van/processing
-  archiveDir: /recon-service/van/archive
-  quarantineDir: /recon-service/van/quarantine
+    enabled: true
