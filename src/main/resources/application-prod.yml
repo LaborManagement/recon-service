@@ -1,12 +1,14 @@
-# Production environment configuration for Azure Container Apps with Azure Database for PostgreSQL
+# Development environment configuration
 spring:
   datasource:
     # PostgreSQL connection for reconciliation service with RLS/VPD
-    # url: ${DB_URL:jdbc:postgresql://paymentreconciliation.postgres.database.azure.com:5432/labormanagement?sslmode=require&currentSchema=reconciliation}
+    #url: jdbc:postgresql://localhost:5432/lbe?currentSchema=reconciliation
     url: ${DB_URL:jdbc:postgresql://lbe-dbinstance.cd0sc0k82p15.ap-south-1.rds.amazonaws.com:5432/lbe?sslmode=require&currentSchema=reconciliation}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:app_reconciliation}
-    password: '${DB_PASSWORD:root}'
+    password: ${DB_PASSWORD:root}
+    # HikariCP connection pooling configuration
+    # CRITICAL: These settings ensure transaction-local RLS context persists
     hikari:
       maximum-pool-size: 8
       minimum-idle: 2
@@ -23,133 +25,42 @@ spring:
       keepalive-time: 30000         # lightweight keepalive; under idle-timeout
   jpa:
     hibernate:
-      ddl-auto: validate  # Don't auto-create tables in prod
-    show-sql: false
+      ddl-auto: none
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        # dialect: org.hibernate.dialect.MySQLDialect
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        "[format_sql]": false
-        jdbc:
-          "[batch_size]": 25
-        "[order_inserts]": true
-        "[order_updates]": true
-        connection:
-          "[provider_disables_autocommit]": true
         default_schema: reconciliation
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-    default-property-inclusion: NON_NULL
-  servlet:
-    multipart:
-      max-file-size: 200MB
-      max-request-size: 200MB
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
-# Auditing toggle
-auditing:
-  enabled: true
 
 logging:
   level:
-    "[com.example.paymentreconciliation]": INFO
-    "[org.hibernate.SQL]": WARN
-    "[org.springframework.web]": WARN
-    root: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+    "[com.example.paymentreconciliation]": DEBUG
+    "[org.hibernate.SQL]": ${LOG_SQL_LEVEL:WARN}
+    "[org.hibernate.type.descriptor.sql.BasicBinder]": ${LOG_SQL_BINDER_LEVEL:WARN}
   file:
-    name: ${LOG_FILE:/tmp/logs/payment-reconciliation.log}
-    max-size: 100MB
-    max-history: 7
-
-springdoc:
-  paths-to-exclude:
-    - /error
-
-# Azure Container Apps ephemeral storage configuration
-file:
-  upload:
-    base-dir: ${FILE_UPLOAD_DIR:/tmp/uploads}
-
-# MT940 statements path for Azure Container Apps ephemeral storage
-mt940:
-  baseDir: ${MT940_BASE_DIR:/path/to/mt940/base}
-  inboxDir: ${MT940_INBOX_DIR:/path/to/mt940/inbox}
-  processingDir: ${MT940_PROCESSING_DIR:/path/to/mt940/processing}
-  archiveDir: ${MT940_ARCHIVE_DIR:/path/to/mt940/archive}
-  quarantineDir: ${MT940_QUARANTINE_DIR:/path/to/mt940/quarantine}
-  statements:
-    path: ${MT940_STATEMENTS_PATH:/tmp/mt940-statements/}
-
-van:
-  baseDir: ${VAN_BASE_DIR:/path/to/van/base}
-  inboxDir: ${VAN_INBOX_DIR:/path/to/van/inbox}
-  processingDir: ${VAN_PROCESSING_DIR:/path/to/van/processing}
-  archiveDir: ${VAN_ARCHIVE_DIR:/path/to/van/archive}
-  quarantineDir: ${VAN_QUARANTINE_DIR:/path/to/van/quarantine}
-
+    name: logs/dev.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] [%X{sessionToken}] [%X{X-Request-ID}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] [%X{sessionToken}] [%X{X-Request-ID}] - %msg%n"
+    
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: when-authorized
-      probes:
-        enabled: true
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  health:
-    livenessstate:
-      enabled: true
-    readinessstate:
-      enabled: true
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-  metrics:
-    tags:
-      application: ${spring.application.name}
-      environment: prod
-
-server:
-  port: ${SERVER_PORT:8082}
-  compression:
-    enabled: true
-    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
-    min-response-size: 1024
-  http2:
-    enabled: true
-  shutdown: graceful
-  tomcat:
-    threads:
-      max: 100  # Reduced for container environment
-      min-spare: 5
-    max-connections: 2048  # Reduced for container environment
-    accept-count: 50
-    connection-timeout: 20000
-    max-http-form-post-size: 200MB
-  forward-headers-strategy: framework  # For Azure Container Apps load balancer
-
+        include: health,info,beans,env,metrics,loggers
 app:
   jwt:
-    secret: ${APP_JWT_SECRET}
+    secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     issuer: ${APP_JWT_ISSUER:user-auth-service}
-    audience: ${APP_JWT_AUDIENCE:payment-services}
-    expiration: ${APP_JWT_EXPIRATION:86400}
+    audience: ${APP_JWT_AUDIENCE:recon-service}
     allowed-audiences: ${APP_JWT_ALLOWED_AUDIENCES:clearing-services,payment-services,recon-service}
+    expiration: ${APP_JWT_EXPIRATION:86400}
 
+# Audit Utility Configuration
 shared-lib:
   audit:
-    enabled: true
+    enabled: true  # Set to true to enable audit logging
     table-name: audit.audit_event
     service-name: reconciliation-service
     source-schema: reconciliation
@@ -165,15 +76,15 @@ shared-lib:
     initial-hash-value: 0000000000000000000000000000000000000000000000000000000000000000
   # SFTP Utility Configuration
   sftp:
-    enabled: false
-    host: ${SFTP_HOST:localhost}
-    port: ${SFTP_PORT:22}
-    username: ${SFTP_USERNAME:user}
-    password: ${SFTP_PASSWORD:password}
-    remote-directory: ${SFTP_REMOTE_DIRECTORY:/incoming}
-    local-directory: ${SFTP_LOCAL_DIRECTORY:/tmp/sftp}
-    known-hosts-file: ${SFTP_KNOWN_HOSTS_FILE:~/.ssh/known_hosts}
-    strict-host-key-checking: ${SFTP_STRICT_HOST_KEY_CHECKING:true}
+    enabled: false  # Set to true to enable SFTP operations
+    host: localhost
+    port: 22
+    username: user
+    password: password
+    remote-directory: /incoming
+    local-directory: /tmp/sftp
+    known-hosts-file: ~/.ssh/known_hosts
+    strict-host-key-checking: true
   security:
     enabled: true
     permitted-paths:
@@ -182,7 +93,7 @@ shared-lib:
       - /swagger-ui/**
       - /swagger-ui.html
     introspection:
-      url: ${AUTH_BASE_URL:http://auth-service:8080/auth-service}/internal/auth/introspect
+      url: ${AUTH_BASE_URL:http://localhost:8080/auth-service}/internal/auth/introspect
       api-key: ${INTERNAL_API_KEY:4f0d3ac5a91b7fe246d3851c09a2f718f6c8d42704e3b89a1f2d6c7b81e4f0a3}
       api-key-header: X-Internal-Api-Key
     cors:
