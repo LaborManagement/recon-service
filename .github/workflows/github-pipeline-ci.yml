@@ -113,32 +113,22 @@ jobs:
       - name: Extract metadata
         id: meta
         run: |
-          # Use the PR head ref when the workflow is running for a pull_request; otherwise use the ref name.
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BRANCH_NAME="${GITHUB_HEAD_REF}"
-          else
-            BRANCH_NAME="${{ github.ref_name }}"
-          fi
-
-          SAFE_BRANCH="${BRANCH_NAME//\//-}"
+          BRANCH_NAME="${{ github.ref_name }}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           BUILD_DATE=$(date -u +'%Y%m%d')
-          BUILD_DATE_ISO=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
-          if [[ "$SAFE_BRANCH" == "develop" ]]; then
+          if [[ "$BRANCH_NAME" == "develop" ]]; then
             IMAGE_TAG="develop-${BUILD_DATE}-${SHORT_SHA}"
-          elif [[ "$SAFE_BRANCH" == "main" || "$SAFE_BRANCH" == "master" ]]; then
+          elif [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" ]]; then
             IMAGE_TAG="master-${BUILD_DATE}"
-          elif [[ "$SAFE_BRANCH" == devops-* ]]; then
+          elif [[ "$BRANCH_NAME" == devops/* ]]; then
+            SAFE_BRANCH=$(echo "$BRANCH_NAME" | sed 's/\//-/g')
             IMAGE_TAG="devops-${SAFE_BRANCH#devops-}-${BUILD_DATE}-${SHORT_SHA}"
           else
-            IMAGE_TAG="${SAFE_BRANCH}-${BUILD_DATE}"
+            IMAGE_TAG="${BRANCH_NAME}-${BUILD_DATE}"
           fi
 
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "branch_name=${SAFE_BRANCH}" >> $GITHUB_OUTPUT
-          echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
-          echo "build_date_iso=${BUILD_DATE_ISO}" >> $GITHUB_OUTPUT
 
       # ============================================
       # 7. Build Docker Image (Multi-stage build includes shared-lib)
@@ -149,9 +139,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
         run: |
-          echo "🔨 Building Docker image with multi-stage build..."
-          echo "   ✓ shared-lib will be built and installed inside Docker"
-          echo "   ✓ recon-service will then be built using shared-lib"
+          echo " Building Docker image with multi-stage build..."
+          echo "   shared-lib will be built inside Docker"
           echo "   Tag: ${IMAGE_TAG}"
 
           # Build the Docker image with the new tag format: branchName-date
