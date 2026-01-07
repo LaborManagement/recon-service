@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
 # ==================== STAGE 1: Build ====================
-FROM maven:3.9.6-eclipse-temurin-17 AS build
-WORKDIR /workspace
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
+WORKDIR /build
 
 # Copy shared-lib first (if present) and install it
-# In CI, shared-lib is checked out to ./shared-lib directory
 COPY shared-lib/pom.xml ./shared-lib/pom.xml
 COPY shared-lib/src ./shared-lib/src
 
@@ -22,8 +22,9 @@ RUN mvn dependency:go-offline -B -q || true
 COPY src ./src
 
 # Build recon-service (shared-lib is now available in local Maven repo)
-RUN mvn -B clean package spring-boot:repackage -DskipTests
+RUN mvn clean package spring-boot:repackage -DskipTests -B -q
 
+# ==================== STAGE 2: Runtime ====================
 FROM eclipse-temurin:17-jre-alpine AS runtime
 RUN apk add --no-cache wget curl
 RUN addgroup -g 1001 -S appuser && \
@@ -40,7 +41,10 @@ WORKDIR ${APP_HOME}
 RUN mkdir -p /tmp/uploads /tmp/logs && \
 	chown -R appuser:appuser /tmp/uploads /tmp/logs && \
 	chown -R appuser:appuser ${APP_HOME}
-COPY --from=build --chown=appuser:appuser /workspace/target/reconciliation-service-0.0.1-SNAPSHOT.jar app.jar
+
+# Copy the built jar from builder stage
+COPY --from=builder /build/target/recon-service-*.jar app.jar
+
 USER appuser
 
 # Environment variables with defaults
