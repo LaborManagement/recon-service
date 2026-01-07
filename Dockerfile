@@ -1,12 +1,27 @@
 # syntax=docker/dockerfile:1
 
+# ==================== STAGE 1: Build ====================
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /workspace
 
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# Copy shared-lib first (if present) and install it
+# In CI, shared-lib is checked out to ./shared-lib directory
+COPY shared-lib/pom.xml ./shared-lib/pom.xml
+COPY shared-lib/src ./shared-lib/src
 
+# Build and install shared-lib to local Maven repository
+RUN cd shared-lib && mvn clean install -DskipTests -B -q
+
+# Copy recon-service pom.xml first for dependency caching
+COPY pom.xml .
+
+# Download dependencies (cached layer if pom.xml unchanged)
+RUN mvn dependency:go-offline -B -q || true
+
+# Copy recon-service source code
 COPY src ./src
+
+# Build recon-service (shared-lib is now available in local Maven repo)
 RUN mvn -B clean package spring-boot:repackage -DskipTests
 
 FROM eclipse-temurin:17-jre-alpine AS runtime
@@ -34,12 +49,12 @@ ENV SERVER_PORT=8082
 
 # JVM options for container environment
 ENV JAVA_OPTS="-XX:+UseContainerSupport \
-    -XX:MaxRAMPercentage=75.0 \
-    -XX:InitialRAMPercentage=50.0 \
-    -XX:+UseG1GC \
-    -XX:+HeapDumpOnOutOfMemoryError \
-    -XX:HeapDumpPath=/app/logs/heapdump.hprof \
-    -Djava.security.egd=file:/prod/./urandom"
+	-XX:MaxRAMPercentage=75.0 \
+	-XX:InitialRAMPercentage=50.0 \
+	-XX:+UseG1GC \
+	-XX:+HeapDumpOnOutOfMemoryError \
+	-XX:HeapDumpPath=/app/logs/heapdump.hprof \
+	-Djava.security.egd=file:/prod/./urandom"
 
 # Expose the application port
 EXPOSE 8082
