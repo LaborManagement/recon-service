@@ -139,8 +139,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
         run: |
-          echo " Building Docker image with multi-stage build..."
-          echo "   shared-lib will be built inside Docker"
+          echo "🔨 Building Docker image with multi-stage build..."
+          echo "   ✓ shared-lib will be built and installed inside Docker"
+          echo "   ✓ recon-service will then be built using shared-lib"
           echo "   Tag: ${IMAGE_TAG}"
 
           # Build the Docker image with the new tag format: branchName-date
