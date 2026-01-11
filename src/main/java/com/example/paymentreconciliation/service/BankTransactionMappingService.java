@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BankTransactionMappingService {
 
-    private static final Set<String> SUPPORTED_TYPES = Set.of("MT940", "CAMT53", "VAN");
+    private static final Set<String> SUPPORTED_TYPES = Set.of("MT940", "CAMT53", "VAN", "STATEMENT_UPLOAD");
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -68,6 +68,9 @@ public class BankTransactionMappingService {
     private String resolveTable(String normalizedType) {
         if ("VAN".equals(normalizedType)) {
             return "reconciliation.van_transaction";
+        }
+        if ("STATEMENT_UPLOAD".equals(normalizedType)) {
+            return "reconciliation.manual_transaction_upload";
         }
         // Default to statement transactions for MT940/CAMT53
         return "reconciliation.statement_transaction";
