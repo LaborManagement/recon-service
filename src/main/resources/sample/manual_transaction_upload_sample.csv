@@ -1,0 +1,3 @@
+tran_date,amount,debit_credit_flag,txn_type,txn_ref,payer,description
+2025-01-15,12500.00,C,REFUND,MAN-001,Acme Corp,Manual credit for January
+2025-01-16,8500.50,D,ADJUSTMENT,MAN-002,Acme Corp,Manual debit adjustment
