@@ -35,9 +35,12 @@ spring:
 
 logging:
   level:
+    root: INFO
     "[com.example.paymentreconciliation]": DEBUG
-    "[org.hibernate.SQL]": ${LOG_SQL_LEVEL:WARN}
+    "[org.hibernate]": ${LOG_SQL_LEVEL:WARN}
     "[org.hibernate.type.descriptor.sql.BasicBinder]": ${LOG_SQL_BINDER_LEVEL:WARN}
+    "[com.shared.security]": INFO
+    "[com.shared.security.rls]": INFO
   file:
     name: logs/dev.log
   pattern:

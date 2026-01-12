@@ -11,6 +11,8 @@ public class ManualTransactionUploadDetailResponse {
     private LocalDate txnDate;
     private BigDecimal txnAmount;
     private String drCrFlag;
+    private String txnType;
+    private String payer;
     private String description;
     private Boolean isMapped;
     private LocalDateTime createdAt;
@@ -62,6 +64,22 @@ public class ManualTransactionUploadDetailResponse {
 
     public void setDrCrFlag(String drCrFlag) {
         this.drCrFlag = drCrFlag;
+    }
+
+    public String getTxnType() {
+        return txnType;
+    }
+
+    public void setTxnType(String txnType) {
+        this.txnType = txnType;
+    }
+
+    public String getPayer() {
+        return payer;
+    }
+
+    public void setPayer(String payer) {
+        this.payer = payer;
     }
 
     public String getDescription() {

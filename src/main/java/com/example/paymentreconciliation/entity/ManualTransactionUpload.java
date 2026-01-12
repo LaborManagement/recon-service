@@ -22,7 +22,7 @@ public class ManualTransactionUpload {
     @jakarta.persistence.JoinColumn(name = "import_run_id")
     private ImportRun importRun;
 
-    @Column(name = "txn_ref", nullable = false, length = 255)
+    @Column(name = "txn_ref", length = 255)
     private String txnRef;
 
     @Column(name = "txn_date", nullable = false)
@@ -33,6 +33,12 @@ public class ManualTransactionUpload {
 
     @Column(name = "dr_cr_flag", nullable = false, length = 2)
     private String drCrFlag;
+
+    @Column(name = "txn_type", length = 64)
+    private String txnType;
+
+    @Column(name = "payer", length = 255)
+    private String payer;
 
     @Column(name = "description")
     private String description;
@@ -98,6 +104,22 @@ public class ManualTransactionUpload {
 
     public void setDrCrFlag(String drCrFlag) {
         this.drCrFlag = drCrFlag;
+    }
+
+    public String getTxnType() {
+        return txnType;
+    }
+
+    public void setTxnType(String txnType) {
+        this.txnType = txnType;
+    }
+
+    public String getPayer() {
+        return payer;
+    }
+
+    public void setPayer(String payer) {
+        this.payer = payer;
     }
 
     public String getDescription() {

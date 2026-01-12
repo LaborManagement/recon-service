@@ -4,7 +4,6 @@ import com.example.paymentreconciliation.model.ManualTransactionUploadRequest;
 import com.example.paymentreconciliation.model.ManualTransactionUploadResponse;
 import com.example.paymentreconciliation.model.ManualTransactionUploadBatchResponse;
 import com.example.paymentreconciliation.model.ManualUploadRunResponse;
-import com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse;
 import com.example.paymentreconciliation.service.ManualTransactionUploadService;
 import com.example.paymentreconciliation.service.ManualTransactionUploadService.DuplicateManualTransactionException;
 import com.shared.utilities.logger.LoggerFactoryProvider;
@@ -88,9 +87,11 @@ public class ManualTransactionUploadController {
 
     @GetMapping("/runs/{runId}")
     @Operation(summary = "List manual transactions for a run", description = "Returns manual_transaction_upload rows linked to the given import_run id.")
-    public ResponseEntity<?> listTransactionsByRun(@PathVariable Long runId) {
+    public ResponseEntity<?> listTransactionsByRun(@PathVariable Long runId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<ManualTransactionUploadDetailResponse> rows = service.listTransactionsByRun(runId);
+            var rows = service.listTransactionsByRun(runId, page, size);
             return ResponseEntity.ok(rows);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));

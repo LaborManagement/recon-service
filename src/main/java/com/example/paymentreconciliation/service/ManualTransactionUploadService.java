@@ -2,11 +2,13 @@ package com.example.paymentreconciliation.service;
 
 import com.example.paymentreconciliation.entity.ManualTransactionUpload;
 import com.example.paymentreconciliation.entity.ImportRun;
+import com.example.paymentreconciliation.entity.ImportError;
 import com.example.paymentreconciliation.model.ManualTransactionUploadBatchResponse;
 import com.example.paymentreconciliation.model.ManualTransactionUploadRequest;
 import com.example.paymentreconciliation.model.ManualTransactionUploadResponse;
 import com.example.paymentreconciliation.repository.ManualTransactionUploadRepository;
 import com.example.paymentreconciliation.repository.ImportRunRepository;
+import com.example.paymentreconciliation.repository.ImportErrorRepository;
 import com.shared.utilities.logger.LoggerFactoryProvider;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -24,6 +26,10 @@ import java.util.List;
 import java.util.Set;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -44,11 +50,14 @@ public class ManualTransactionUploadService {
 
     private final ManualTransactionUploadRepository repository;
     private final ImportRunRepository importRunRepository;
+    private final ImportErrorRepository importErrorRepository;
 
     public ManualTransactionUploadService(ManualTransactionUploadRepository repository,
-            ImportRunRepository importRunRepository) {
+            ImportRunRepository importRunRepository,
+            ImportErrorRepository importErrorRepository) {
         this.repository = repository;
         this.importRunRepository = importRunRepository;
+        this.importErrorRepository = importErrorRepository;
     }
 
     @Transactional
@@ -62,9 +71,6 @@ public class ManualTransactionUploadService {
             throw new IllegalArgumentException("Request body is required");
         }
         String txnRef = trim(request.getTxnRef());
-        if (!hasText(txnRef)) {
-            throw new IllegalArgumentException("txnRef is required");
-        }
         if (request.getTxnDate() == null) {
             throw new IllegalArgumentException("txnDate is required");
         }
@@ -73,6 +79,12 @@ public class ManualTransactionUploadService {
             throw new IllegalArgumentException("txnAmount must be greater than zero");
         }
         String drCrFlag = normalizeDrCrFlag(request.getDrCrFlag());
+        String txnType = hasText(request.getTxnType()) ? request.getTxnType().trim().toUpperCase() : null;
+        String payer = trim(request.getPayer());
+
+        if (requiresTxnRef(txnType) && !hasText(txnRef)) {
+            throw new IllegalArgumentException("txn_ref is required for txn_type " + requiredTxnTypeLabel(txnType));
+        }
 
         ManualTransactionUpload entity = new ManualTransactionUpload();
         entity.setImportRun(importRun);
@@ -80,6 +92,8 @@ public class ManualTransactionUploadService {
         entity.setTxnDate(request.getTxnDate());
         entity.setTxnAmount(amount);
         entity.setDrCrFlag(drCrFlag);
+        entity.setTxnType(txnType);
+        entity.setPayer(payer);
         entity.setDescription(trim(request.getDescription()));
         entity.setIsMapped(Boolean.FALSE);
         entity.setCreatedAt(LocalDateTime.now());
@@ -94,13 +108,15 @@ public class ManualTransactionUploadService {
                     "Manual transaction already exists with same txn_ref, txn_date, and txn_amount", ex);
         }
 
+        String responseTxnType = hasText(entity.getTxnType()) ? entity.getTxnType() : TXN_TYPE;
         return new ManualTransactionUploadResponse(
                 entity.getId(),
-                TXN_TYPE,
+                responseTxnType,
                 entity.getTxnRef(),
                 entity.getTxnDate(),
                 entity.getTxnAmount(),
                 entity.getDrCrFlag(),
+                entity.getPayer(),
                 entity.getDescription());
     }
 
@@ -138,8 +154,10 @@ public class ManualTransactionUploadService {
                     inserted.add(response);
                 } catch (DuplicateManualTransactionException ex) {
                     errors.add("line " + lineNo + ": duplicate in database - " + ex.getMessage());
+                    persistImportError(importRun, "DUPLICATE", ex.getMessage(), lineNo);
                 } catch (IllegalArgumentException ex) {
                     errors.add("line " + lineNo + ": " + ex.getMessage());
+                    persistImportError(importRun, "VALIDATION", ex.getMessage(), lineNo);
                 }
             }
         } catch (IOException ex) {
@@ -184,27 +202,31 @@ public class ManualTransactionUploadService {
     }
 
     @Transactional(readOnly = true)
-    public List<com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse> listTransactionsByRun(Long runId) {
+    public Page<com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse> listTransactionsByRun(
+            Long runId, int page, int size) {
         if (runId == null) {
             throw new IllegalArgumentException("runId is required");
         }
-        List<ManualTransactionUpload> rows = repository.findByImportRunIdOrderByIdDesc(runId);
-        List<com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse> result = new ArrayList<>();
-        for (ManualTransactionUpload row : rows) {
-            com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse dto = new com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse();
-            dto.setId(row.getId());
-            dto.setImportRunId(runId);
-            dto.setTxnRef(row.getTxnRef());
-            dto.setTxnDate(row.getTxnDate());
-            dto.setTxnAmount(row.getTxnAmount());
-            dto.setDrCrFlag(row.getDrCrFlag());
-            dto.setDescription(row.getDescription());
-            dto.setIsMapped(row.getIsMapped());
-            dto.setCreatedAt(row.getCreatedAt());
-            dto.setCreatedBy(row.getCreatedBy());
-            result.add(dto);
-        }
-        return result;
+        int pageNumber = page >= 0 ? page : 0;
+        int pageSize = size > 0 ? Math.min(size, 200) : 50;
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id"));
+        return repository.findByImportRunId(runId, pageable)
+                .map(row -> {
+                    com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse dto = new com.example.paymentreconciliation.model.ManualTransactionUploadDetailResponse();
+                    dto.setId(row.getId());
+                    dto.setImportRunId(runId);
+                    dto.setTxnRef(row.getTxnRef());
+                    dto.setTxnDate(row.getTxnDate());
+                    dto.setTxnAmount(row.getTxnAmount());
+                    dto.setDrCrFlag(row.getDrCrFlag());
+                    dto.setTxnType(row.getTxnType());
+                    dto.setPayer(row.getPayer());
+                    dto.setDescription(row.getDescription());
+                    dto.setIsMapped(row.getIsMapped());
+                    dto.setCreatedAt(row.getCreatedAt());
+                    dto.setCreatedBy(row.getCreatedBy());
+                    return dto;
+                });
     }
 
     private ManualTransactionUploadResponse createWithRun(ManualTransactionUploadRequest request, String createdBy,
@@ -214,30 +236,38 @@ public class ManualTransactionUploadService {
 
     private ManualTransactionUploadRequest toRequest(CSVRecord record) {
         ManualTransactionUploadRequest request = new ManualTransactionUploadRequest();
-        request.setTxnRef(required(record, "txn_ref"));
-        request.setTxnDate(parseDate(record, "txn_date"));
-        request.setTxnAmount(parseAmount(record, "txn_amount"));
-        request.setDrCrFlag(required(record, "dr_cr_flag"));
+        request.setTxnRef(optionalAny(record, "txn_ref"));
+        request.setTxnDate(parseDate(requiredAny(record, "tran_date", "txn_date")));
+        request.setTxnAmount(parseAmount(requiredAny(record, "amount", "txn_amount")));
+        request.setDrCrFlag(requiredAny(record, "debit_credit_flag", "dr_cr_flag"));
+        request.setTxnType(optionalAny(record, "txn_type"));
+        request.setPayer(optionalAny(record, "payer"));
         request.setDescription(optional(record, "description"));
         return request;
     }
 
-    private BigDecimal parseAmount(CSVRecord record, String column) {
-        String value = required(record, column);
+    private BigDecimal parseAmount(String value) {
         try {
             return new BigDecimal(value);
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException(column + " must be a valid decimal amount");
+            throw new IllegalArgumentException("amount must be a valid decimal amount");
         }
     }
 
-    private LocalDate parseDate(CSVRecord record, String column) {
-        String value = required(record, column);
-        try {
-            return LocalDate.parse(value, ISO_DATE);
-        } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException(column + " must be in format yyyy-MM-dd");
+    private LocalDate parseDate(String value) {
+        if (!hasText(value)) {
+            throw new IllegalArgumentException("tran_date is required");
         }
+        String trimmed = value.trim();
+        DateTimeFormatter[] fmts = new DateTimeFormatter[] { ISO_DATE, DateTimeFormatter.ofPattern("dd-MM-uuuu") };
+        for (DateTimeFormatter fmt : fmts) {
+            try {
+                return LocalDate.parse(trimmed, fmt);
+            } catch (DateTimeParseException ignored) {
+                // try next
+            }
+        }
+        throw new IllegalArgumentException("tran_date must be in format yyyy-MM-dd or dd-MM-yyyy");
     }
 
     private String required(CSVRecord record, String column) {
@@ -251,6 +281,39 @@ public class ManualTransactionUploadService {
     private String optional(CSVRecord record, String column) {
         String value = record.isMapped(column) ? record.get(column) : null;
         return value != null ? value.trim() : null;
+    }
+
+    private String requiredAny(CSVRecord record, String... columns) {
+        for (String column : columns) {
+            if (record.isMapped(column)) {
+                String value = record.get(column);
+                if (value != null && !value.trim().isEmpty()) {
+                    return value.trim();
+                }
+            }
+        }
+        throw new IllegalArgumentException(String.join("/", columns) + " is required");
+    }
+
+    private String optionalAny(CSVRecord record, String... columns) {
+        for (String column : columns) {
+            if (record.isMapped(column)) {
+                String value = record.get(column);
+                if (value != null && !value.trim().isEmpty()) {
+                    return value.trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void persistImportError(ImportRun importRun, String code, String message, Integer lineNo) {
+        ImportError error = new ImportError();
+        error.setImportRun(importRun);
+        error.setCode(code);
+        error.setMessage(message);
+        error.setLineNo(lineNo);
+        importErrorRepository.save(error);
     }
 
     private ImportRun createImportRun(MultipartFile file, byte[] content) {
@@ -285,6 +348,18 @@ public class ManualTransactionUploadService {
         importRun.setStatus(failed > 0 ? ImportRun.Status.PARTIAL : ImportRun.Status.IMPORTED);
         importRun.setErrorMessage(errorMessage);
         importRunRepository.save(importRun);
+    }
+
+    private boolean requiresTxnRef(String txnType) {
+        if (txnType == null) {
+            return false;
+        }
+        String type = txnType.toUpperCase();
+        return type.equals("NEFT") || type.equals("RTGS") || type.equals("IMPS") || type.equals("UPI");
+    }
+
+    private String requiredTxnTypeLabel(String txnType) {
+        return txnType != null ? txnType : "UNKNOWN";
     }
 
     private String sha256(byte[] content) {

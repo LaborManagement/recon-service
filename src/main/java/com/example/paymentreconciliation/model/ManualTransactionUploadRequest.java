@@ -8,7 +8,6 @@ import java.time.LocalDate;
 
 public class ManualTransactionUploadRequest {
 
-    @NotBlank
     private String txnRef;
 
     @NotNull
@@ -20,6 +19,10 @@ public class ManualTransactionUploadRequest {
     @NotBlank
     @Pattern(regexp = "(?i)(CR|DR|C|D)")
     private String drCrFlag;
+
+    private String txnType;
+
+    private String payer;
 
     private String description;
 
@@ -61,5 +64,21 @@ public class ManualTransactionUploadRequest {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTxnType() {
+        return txnType;
+    }
+
+    public void setTxnType(String txnType) {
+        this.txnType = txnType;
+    }
+
+    public String getPayer() {
+        return payer;
+    }
+
+    public void setPayer(String payer) {
+        this.payer = payer;
     }
 }
