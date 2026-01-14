@@ -27,7 +27,7 @@ RUN mvn clean package spring-boot:repackage -DskipTests -B -q
 # ==================== STAGE 2: Runtime ====================
 FROM eclipse-temurin:17-jre-alpine AS runtime
 RUN apk add --no-cache wget curl python3 py3-pip py3-pillow && \
-	python3 -m pip install --no-cache-dir pdfplumber==0.11.0
+	PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install --no-cache-dir pdfplumber==0.11.0
 RUN addgroup -g 1001 -S appuser && \
 	adduser -u 1001 -S appuser -G appuser
 ENV APP_HOME=/app \
