@@ -31,6 +31,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: reconciliation
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 
 logging:
@@ -134,3 +138,9 @@ van:
   processingDir: /recon-service/van/processing
   archiveDir: /recon-service/van/archive
   quarantineDir: /recon-service/van/quarantine
+
+recon:
+  pdf:
+    python:
+      # Point to local interpreter that already has pdfplumber installed
+      executable: ${RECON_PDF_PYTHON_EXECUTABLE:/opt/miniconda3/bin/python}
