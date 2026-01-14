@@ -4,6 +4,7 @@ import com.example.paymentreconciliation.model.ManualTransactionUploadRequest;
 import com.example.paymentreconciliation.model.ManualTransactionUploadResponse;
 import com.example.paymentreconciliation.model.ManualTransactionUploadBatchResponse;
 import com.example.paymentreconciliation.model.ManualUploadRunResponse;
+import com.example.paymentreconciliation.service.ManualTransactionPdfConversionService;
 import com.example.paymentreconciliation.service.ManualTransactionUploadService;
 import com.example.paymentreconciliation.service.ManualTransactionUploadService.DuplicateManualTransactionException;
 import com.shared.utilities.logger.LoggerFactoryProvider;
@@ -14,7 +15,9 @@ import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.List;
 import org.slf4j.Logger;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,9 +38,12 @@ public class ManualTransactionUploadController {
     private static final Logger log = LoggerFactoryProvider.getLogger(ManualTransactionUploadController.class);
 
     private final ManualTransactionUploadService service;
+    private final ManualTransactionPdfConversionService pdfConversionService;
 
-    public ManualTransactionUploadController(ManualTransactionUploadService service) {
+    public ManualTransactionUploadController(ManualTransactionUploadService service,
+            ManualTransactionPdfConversionService pdfConversionService) {
         this.service = service;
+        this.pdfConversionService = pdfConversionService;
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -99,6 +105,29 @@ public class ManualTransactionUploadController {
             log.error("Failed to fetch manual transactions for run {}", runId, ex);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Unable to fetch manual transactions right now"));
+        }
+    }
+
+    @PostMapping(value = "/pdf/convert", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "text/csv")
+    @Operation(summary = "Convert statement PDF to CSV",
+            description = "Extracts table rows from a bank statement PDF and returns a CSV (headers vary by bank). "
+                    + "Supported banks for cleanup: pnb, bom, bob. Strategy: lines/text for table detection.")
+    public ResponseEntity<?> convertPdfToCsv(@RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String bank,
+            @RequestParam(defaultValue = "lines") String strategy) {
+        try {
+            var result = pdfConversionService.convertToCsv(file, bank, strategy);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + result.downloadFileName() + "\"")
+                    .contentType(MediaType.valueOf("text/csv"))
+                    .body(new ByteArrayResource(result.csvBytes()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            log.error("Failed to convert manual transaction PDF", ex);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Unable to convert PDF right now"));
         }
     }
 }
