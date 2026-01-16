@@ -47,7 +47,7 @@ public class ManualTransactionUploadController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Create manual transaction", description = "Adds a manual transaction (txn_ref, txn_date, txn_amount, dr_cr_flag, description) with type STATEMENT_UPLOAD.")
+    @Operation(summary = "Create manual transaction", description = "Adds a manual transaction (txn_ref, txn_date, txn_amount, dr_cr_flag, description) with txn_type limited to NEFT/RTGS/IMPS (defaults to STATEMENT_UPLOAD when omitted).")
     public ResponseEntity<?> create(@Valid @RequestBody ManualTransactionUploadRequest request,
             @RequestParam(required = false) String createdBy) {
         try {
@@ -65,7 +65,7 @@ public class ManualTransactionUploadController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload manual transactions CSV", description = "CSV headers: txn_ref, txn_date (yyyy-MM-dd), txn_amount, dr_cr_flag (CR/DR), description (optional).")
+    @Operation(summary = "Upload manual transactions CSV", description = "CSV headers: txn_ref, txn_date (yyyy-MM-dd), txn_amount, dr_cr_flag (CR/DR), txn_type (NEFT/RTGS/IMPS only, optional), payer (optional), description (optional).")
     public ResponseEntity<?> uploadCsv(@RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String createdBy) {
         try {

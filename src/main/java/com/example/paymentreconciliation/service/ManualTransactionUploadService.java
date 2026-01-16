@@ -45,6 +45,7 @@ public class ManualTransactionUploadService {
 
     private static final Logger log = LoggerFactoryProvider.getLogger(ManualTransactionUploadService.class);
     private static final String TXN_TYPE = "STATEMENT_UPLOAD";
+    private static final Set<String> ALLOWED_TXN_TYPES = Set.of("NEFT", "RTGS", "IMPS");
     private static final long MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
     private static final DateTimeFormatter ISO_DATE = DateTimeFormatter.ISO_LOCAL_DATE;
 
@@ -79,7 +80,7 @@ public class ManualTransactionUploadService {
             throw new IllegalArgumentException("txnAmount must be greater than zero");
         }
         String drCrFlag = normalizeDrCrFlag(request.getDrCrFlag());
-        String txnType = hasText(request.getTxnType()) ? request.getTxnType().trim().toUpperCase() : null;
+        String txnType = normalizeTxnType(request.getTxnType());
         String payer = trim(request.getPayer());
 
         if (requiresTxnRef(txnType) && !hasText(txnRef)) {
@@ -351,11 +352,7 @@ public class ManualTransactionUploadService {
     }
 
     private boolean requiresTxnRef(String txnType) {
-        if (txnType == null) {
-            return false;
-        }
-        String type = txnType.toUpperCase();
-        return type.equals("NEFT") || type.equals("RTGS") || type.equals("IMPS") || type.equals("UPI");
+        return txnType != null && ALLOWED_TXN_TYPES.contains(txnType);
     }
 
     private String requiredTxnTypeLabel(String txnType) {
@@ -406,6 +403,17 @@ public class ManualTransactionUploadService {
             return normalized;
         }
         throw new IllegalArgumentException("drCrFlag must be C, D, CR or DR");
+    }
+
+    private String normalizeTxnType(String rawTxnType) {
+        if (!hasText(rawTxnType)) {
+            return null;
+        }
+        String normalized = rawTxnType.trim().toUpperCase();
+        if (!ALLOWED_TXN_TYPES.contains(normalized)) {
+            throw new IllegalArgumentException("txn_type must be one of NEFT, RTGS or IMPS");
+        }
+        return normalized;
     }
 
     private boolean hasText(String value) {
