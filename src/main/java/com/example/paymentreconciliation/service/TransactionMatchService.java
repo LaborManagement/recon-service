@@ -68,7 +68,10 @@ public class TransactionMatchService {
                 UPDATE reconciliation.transaction_search_details d
                    SET status = 'FOUND',
                        matched_txn_id = c.source_txn_id,
-                       txn_type = c.txn_type,
+                       txn_type = CASE
+                                      WHEN c.txn_type IS NULL OR UPPER(c.txn_type) = 'NA' THEN d.txn_type
+                                      ELSE c.txn_type
+                                  END,
                        description = c.description,
                        checked_at = NOW(),
                        error = NULL

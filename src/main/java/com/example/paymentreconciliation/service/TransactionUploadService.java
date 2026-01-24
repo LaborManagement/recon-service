@@ -202,7 +202,7 @@ public class TransactionUploadService {
         detail.setEmployerId(defaultEmployerId);
         detail.setToliId(defaultToliId);
         detail.setDescription(coalesce(record, "description", null));
-        detail.setTxnType(coalesce(record, "txn_type", "UPI"));
+        detail.setTxnType(normalizeTxnType(coalesce(record, "txn_type", "UPI")));
         detail.setTxnRef(required(record, "txn_ref", lineNo));
         detail.setRequestNmbr(requestNmbrToStore);
         detail.setCreatedAt(LocalDateTime.now());
@@ -263,6 +263,13 @@ public class TransactionUploadService {
             return defaultValue;
         }
         return value.trim();
+    }
+
+    private String normalizeTxnType(String txnType) {
+        if (txnType == null || txnType.isBlank()) {
+            return "UPI";
+        }
+        return txnType.trim().toUpperCase();
     }
 
     private LocalDate parseDate(String value) {
